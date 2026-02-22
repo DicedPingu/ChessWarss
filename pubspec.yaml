@@ -1,5 +1,5 @@
 name: chesswarss
-description: "ChessWarss strategy + chess battle prototype"
+description: "ChessWarss strategy + chess battle alpha"
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  flutter_svg: ^2.0.17
+  google_fonts: ^8.0.2
 
 dev_dependencies:
   flutter_test:
@@ -18,3 +20,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/pieces/

@@ -23,6 +23,8 @@ class ArmyDefinition {
   final String label;
   final List<ArmyUnit> units;
 
+  ArmyComposition get composition => ArmyComposition.fromUnits(units);
+
   int countType(PieceType type) {
     return units.where((unit) => unit.type == type).length;
   }
@@ -41,4 +43,60 @@ class PlayerArmySet {
 
   final int playerId;
   final List<ArmyDefinition> armies;
+}
+
+class ArmyComposition {
+  const ArmyComposition({
+    required this.pawns,
+    required this.rooks,
+    required this.knights,
+    required this.bishops,
+    required this.generals,
+    required this.veteranGenerals,
+  });
+
+  final int pawns;
+  final int rooks;
+  final int knights;
+  final int bishops;
+  final int generals;
+  final int veteranGenerals;
+
+  int get rookieGenerals => generals - veteranGenerals;
+
+  factory ArmyComposition.fromUnits(List<ArmyUnit> units) {
+    var pawns = 0;
+    var rooks = 0;
+    var knights = 0;
+    var bishops = 0;
+    var generals = 0;
+    var veteranGenerals = 0;
+
+    for (final unit in units) {
+      switch (unit.type) {
+        case PieceType.pawn:
+          pawns++;
+        case PieceType.rook:
+          rooks++;
+        case PieceType.knight:
+          knights++;
+        case PieceType.bishop:
+          bishops++;
+        case PieceType.general:
+          generals++;
+          if (unit.generalSkill == GeneralSkill.veteranCommander) {
+            veteranGenerals++;
+          }
+      }
+    }
+
+    return ArmyComposition(
+      pawns: pawns,
+      rooks: rooks,
+      knights: knights,
+      bishops: bishops,
+      generals: generals,
+      veteranGenerals: veteranGenerals,
+    );
+  }
 }

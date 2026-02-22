@@ -33,6 +33,23 @@ class BattleSession {
   int? winnerPlayerId() {
     final attackerAlive = battleState.commanderAlive(attackerStack.ownerId);
     final defenderAlive = battleState.commanderAlive(defenderStack.ownerId);
+    final attackerMoraleBroken = battleState.moraleBroken(
+      attackerStack.ownerId,
+    );
+    final defenderMoraleBroken = battleState.moraleBroken(
+      defenderStack.ownerId,
+    );
+
+    if (attackerMoraleBroken && defenderMoraleBroken) {
+      return null;
+    }
+    if (attackerMoraleBroken) {
+      return defenderStack.ownerId;
+    }
+    if (defenderMoraleBroken) {
+      return attackerStack.ownerId;
+    }
+
     if (attackerAlive && defenderAlive) {
       return null;
     }

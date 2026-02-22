@@ -28,9 +28,9 @@ class WorldGenerator {
       );
     });
 
-    final protectedTiles = _spawnTilesByPlayer(playerCount)
-        .expand((positions) => positions)
-        .toSet();
+    final protectedTiles = _spawnTilesByPlayer(
+      playerCount,
+    ).expand((positions) => positions).toSet();
 
     final blockedStrategic = _blockedStrategicTiles(
       boardSize: boardSize,
@@ -62,7 +62,10 @@ class WorldGenerator {
 
     final stacks = <ArmyStack>[];
     for (var playerId = 0; playerId < playerCount; playerId++) {
-      final armySet = armyFactory.createArmySet(playerId: playerId, random: random);
+      final armySet = armyFactory.createArmySet(
+        playerId: playerId,
+        random: random,
+      );
       final spawns = _spawnTilesByPlayer(playerCount)[playerId];
       for (var i = 0; i < armySet.armies.length; i++) {
         stacks.add(
@@ -86,9 +89,7 @@ class WorldGenerator {
       stacks: stacks,
       preset: preset,
       seed: seed,
-      log: [
-        'Match started: ${preset.name} on ${boardSize}x$boardSize.',
-      ],
+      log: ['Match started: ${preset.name} on ${boardSize}x$boardSize.'],
     );
   }
 
@@ -151,11 +152,12 @@ class WorldGenerator {
     required MapPreset preset,
     required int seed,
   }) {
-    final rows = ((tile.row + seed) % 2 == 0) ? 8 : 4;
-    final cols = ((tile.col + seed) % 2 == 0) ? 8 : 4;
+    final rows = ((tile.row + seed) % 2 == 0) ? 8 : 6;
+    final cols = ((tile.col + seed) % 2 == 0) ? 8 : 6;
     final blocked = <BoardPosition>{};
+    final allowBlockedCells = rows * cols > 24;
 
-    if (preset == MapPreset.tightRavine) {
+    if (allowBlockedCells && preset == MapPreset.tightRavine) {
       final midCol = cols ~/ 2;
       for (var row = 1; row < rows - 1; row++) {
         if ((row + tile.row + tile.col) % 2 == 0) {
@@ -164,10 +166,11 @@ class WorldGenerator {
       }
     }
 
-    if (preset == MapPreset.brokenGround) {
+    if (allowBlockedCells && preset == MapPreset.brokenGround) {
       for (var row = 1; row < rows - 1; row++) {
         for (var col = 1; col < cols - 1; col++) {
-          final hash = (row * 5 + col * 11 + tile.row * 3 + tile.col + seed) % 23;
+          final hash =
+              (row * 5 + col * 11 + tile.row * 3 + tile.col + seed) % 23;
           if (hash == 2) {
             blocked.add(BoardPosition(row, col));
           }
@@ -176,6 +179,11 @@ class WorldGenerator {
     }
 
     final notation = '${rows}x$cols:${blocked.length}:${preset.name}';
-    return BattlefieldSpec(rows: rows, cols: cols, blocked: blocked, notation: notation);
+    return BattlefieldSpec(
+      rows: rows,
+      cols: cols,
+      blocked: blocked,
+      notation: notation,
+    );
   }
 }

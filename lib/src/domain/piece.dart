@@ -2,7 +2,53 @@ import 'board_position.dart';
 
 enum PieceType { pawn, rook, knight, bishop, general }
 
-enum GeneralSkill { fieldCommander, veteranCommander }
+enum GeneralSkill {
+  fragileMarshal,
+  fieldCommander,
+  veteranCommander,
+  warDrummer,
+}
+
+extension GeneralSkillProfile on GeneralSkill {
+  bool get isNegative {
+    return this == GeneralSkill.fragileMarshal;
+  }
+
+  bool get grantsMassAdvance {
+    return this == GeneralSkill.veteranCommander ||
+        this == GeneralSkill.warDrummer;
+  }
+
+  bool get visibleToEnemy {
+    return this != GeneralSkill.fieldCommander;
+  }
+
+  String get publicLabel {
+    switch (this) {
+      case GeneralSkill.fragileMarshal:
+        return 'Fragile Marshal';
+      case GeneralSkill.fieldCommander:
+        return 'Field Commander';
+      case GeneralSkill.veteranCommander:
+        return 'Veteran Commander';
+      case GeneralSkill.warDrummer:
+        return 'War Drummer';
+    }
+  }
+
+  String get perkDescription {
+    switch (this) {
+      case GeneralSkill.fragileMarshal:
+        return 'If threatened, nearby troops may retreat and lose morale.';
+      case GeneralSkill.fieldCommander:
+        return 'Stable command presence with no special active skill.';
+      case GeneralSkill.veteranCommander:
+        return 'Can trigger a stronger group advance once per battle.';
+      case GeneralSkill.warDrummer:
+        return 'Can trigger a mass advance once per battle.';
+    }
+  }
+}
 
 class BattlePiece {
   const BattlePiece({
@@ -30,7 +76,8 @@ class BattlePiece {
     if (!isGeneral) {
       return 0;
     }
-    return generalSkill == GeneralSkill.veteranCommander ? 2 : 1;
+    // Alpha balance: generals are king-like commanders for all tiers.
+    return 1;
   }
 
   BattlePiece copyWith({
@@ -55,10 +102,22 @@ class BattlePiece {
     if (!isGeneral) {
       return this;
     }
+
     final updatedExperience = generalExperience + amount;
-    final updatedSkill = updatedExperience >= 2
-        ? GeneralSkill.veteranCommander
-        : generalSkill;
+    final currentSkill = generalSkill ?? GeneralSkill.fieldCommander;
+    GeneralSkill updatedSkill = currentSkill;
+
+    if (currentSkill == GeneralSkill.fragileMarshal && updatedExperience >= 2) {
+      updatedSkill = GeneralSkill.fieldCommander;
+    }
+
+    if (updatedExperience >= 3) {
+      updatedSkill = GeneralSkill.warDrummer;
+    } else if (updatedExperience >= 2 &&
+        currentSkill != GeneralSkill.fragileMarshal) {
+      updatedSkill = GeneralSkill.veteranCommander;
+    }
+
     return copyWith(
       generalExperience: updatedExperience,
       generalSkill: updatedSkill,

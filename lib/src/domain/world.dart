@@ -8,21 +8,13 @@ enum TerrainType { passable, blocked }
 enum MapPreset { greatField, tightRavine, brokenGround }
 
 class PlayerSlot {
-  const PlayerSlot({
-    required this.id,
-    required this.type,
-    required this.name,
-  });
+  const PlayerSlot({required this.id, required this.type, required this.name});
 
   final int id;
   final PlayerType type;
   final String name;
 
-  PlayerSlot copyWith({
-    int? id,
-    PlayerType? type,
-    String? name,
-  }) {
+  PlayerSlot copyWith({int? id, PlayerType? type, String? name}) {
     return PlayerSlot(
       id: id ?? this.id,
       type: type ?? this.type,
@@ -127,6 +119,15 @@ class WorldState {
     return null;
   }
 
+  ArmyStack? stackById(String stackId) {
+    for (final stack in stacks) {
+      if (stack.id == stackId) {
+        return stack;
+      }
+    }
+    return null;
+  }
+
   List<ArmyStack> stacksForPlayer(int playerId) {
     return stacks.where((stack) => stack.ownerId == playerId).toList();
   }
@@ -140,7 +141,10 @@ class WorldState {
   }
 
   List<BoardPosition> legalMovesForStack(String stackId) {
-    final stack = stacks.firstWhere((item) => item.id == stackId);
+    final stack = stackById(stackId);
+    if (stack == null) {
+      return const [];
+    }
     final moves = <BoardPosition>[];
     for (final delta in const [
       BoardPosition(-1, 0),
@@ -190,10 +194,7 @@ class WorldState {
 }
 
 class WorldMove {
-  const WorldMove({
-    required this.stackId,
-    required this.to,
-  });
+  const WorldMove({required this.stackId, required this.to});
 
   final String stackId;
   final BoardPosition to;

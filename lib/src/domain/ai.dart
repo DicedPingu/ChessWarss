@@ -21,7 +21,11 @@ class StrategicAi {
           score += 100;
         }
 
-        final nearestEnemyDistance = _nearestEnemyDistance(world, move, playerId);
+        final nearestEnemyDistance = _nearestEnemyDistance(
+          world,
+          move,
+          playerId,
+        );
         score += (10 - nearestEnemyDistance).clamp(0, 10).toDouble();
 
         score += random.nextDouble();
@@ -45,7 +49,8 @@ class StrategicAi {
       if (stack.ownerId == ownerId) {
         continue;
       }
-      final distance = (stack.position.row - from.row).abs() +
+      final distance =
+          (stack.position.row - from.row).abs() +
           (stack.position.col - from.col).abs();
       if (distance < best) {
         best = distance;
@@ -59,7 +64,9 @@ class BattleAi {
   const BattleAi();
 
   BattleAction? chooseMove(BattleState state, int seed) {
-    final random = Random(seed + state.moveLog.length * 17 + state.activePlayer);
+    final random = Random(
+      seed + state.moveLog.length * 17 + state.activePlayer,
+    );
     final actions = <_ScoredBattleAction>[];
 
     for (final piece in state.piecesForPlayer(state.activePlayer)) {
@@ -77,12 +84,17 @@ class BattleAi {
         }
 
         final centerBias =
-            -((to.row - (state.rows / 2)).abs() + (to.col - (state.cols / 2)).abs());
+            -((to.row - (state.rows / 2)).abs() +
+                (to.col - (state.cols / 2)).abs());
         score += centerBias * 0.08;
 
         actions.add(
           _ScoredBattleAction(
-            BattleAction(pieceId: piece.id, to: to, capturedPieceId: target?.id),
+            BattleAction(
+              pieceId: piece.id,
+              to: to,
+              capturedPieceId: target?.id,
+            ),
             score,
           ),
         );

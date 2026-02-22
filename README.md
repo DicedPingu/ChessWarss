@@ -1,8 +1,8 @@
 # ChessWarss
 
-ChessWarss is a Flutter prototype for a strategy game that combines a small Risk-style world map with chess-style tactical battles.
+ChessWarss is a Flutter alpha for a strategy game that combines a small Risk-style world map with chess-style tactical battles.
 
-## Prototype Status
+## Alpha Status
 
 Current build is playable and focused on proving the core loop:
 
@@ -59,6 +59,26 @@ flutter pub get
 flutter run
 ```
 
+### Run the Linux app (safe mode for unstable GPU drivers)
+
+```bash
+./tool/dev_linux_safe.sh
+```
+
+Force software rendering if your desktop compositor becomes unstable:
+
+```bash
+RENDERER=software ./tool/dev_linux_safe.sh
+```
+
+### Run Android on Linux (low-freeze dev mode)
+
+```bash
+./tool/dev_android_safe.sh
+```
+
+This helper uses lower emulator/Gradle resource settings and a stable Android Studio JDK to keep the desktop responsive during development.
+
 ### Quality checks
 
 ```bash
@@ -72,7 +92,7 @@ See `TODO.md` for prioritized next steps.
 
 ## Current Limitations
 
-- Battle rules are intentionally simplified for prototype speed
+- Battle rules are intentionally simplified for alpha scope
 - AI is heuristic-based, not engine-strength
 - No persistence, networking, or cloud saves yet
 - No full economy/recruitment system in this phase

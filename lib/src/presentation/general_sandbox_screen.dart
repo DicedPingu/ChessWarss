@@ -9,14 +9,14 @@ import '../domain/board_position.dart';
 import '../domain/piece.dart';
 import 'widgets/battle_board_widget.dart';
 
-class GeneralPrototypeScreen extends StatefulWidget {
-  const GeneralPrototypeScreen({super.key});
+class GeneralSandboxScreen extends StatefulWidget {
+  const GeneralSandboxScreen({super.key});
 
   @override
-  State<GeneralPrototypeScreen> createState() => _GeneralPrototypeScreenState();
+  State<GeneralSandboxScreen> createState() => _GeneralSandboxScreenState();
 }
 
-class _GeneralPrototypeScreenState extends State<GeneralPrototypeScreen> {
+class _GeneralSandboxScreenState extends State<GeneralSandboxScreen> {
   final ArmyFactory _armyFactory = const ArmyFactory();
 
   late int _seed;
@@ -30,7 +30,7 @@ class _GeneralPrototypeScreenState extends State<GeneralPrototypeScreen> {
   String? _selectedPieceId;
   Set<BoardPosition> _legalMoves = {};
   String _statusLine =
-      'Select a piece and move. Generals move orthogonally only.';
+      'Select a piece and move. Generals are king-like commanders.';
 
   @override
   void initState() {
@@ -64,7 +64,7 @@ class _GeneralPrototypeScreenState extends State<GeneralPrototypeScreen> {
     _legalMoves = {};
 
     _statusLine =
-        'Battle reset. P1 goes first. G1=rookie commander, G2=veteran commander (2-step).';
+        'Battle reset. P1 goes first. Generals move 1 tile in any direction.';
 
     setState(() {});
   }
@@ -128,7 +128,7 @@ class _GeneralPrototypeScreenState extends State<GeneralPrototypeScreen> {
       final skill = piece.generalSkill == GeneralSkill.veteranCommander
           ? 'Veteran'
           : 'Rookie';
-      return 'Selected $skill General: $legalMoveCount legal orthogonal moves.';
+      return 'Selected $skill General: $legalMoveCount legal king-style moves.';
     }
     return 'Selected ${piece.type.name}: $legalMoveCount legal moves.';
   }
@@ -139,7 +139,7 @@ class _GeneralPrototypeScreenState extends State<GeneralPrototypeScreen> {
     final northArmy = _northArmySet.armies[_northArmyIndex];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ChessWarss - General Prototype')),
+      appBar: AppBar(title: const Text('ChessWarss - General Sandbox')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -271,9 +271,10 @@ class _GeneralPrototypeScreenState extends State<GeneralPrototypeScreen> {
               padding: EdgeInsets.all(10),
               child: Text(
                 'General rules now:\n'
-                '- G1 (rookie): orthogonal 1 square.\n'
-                '- G2 (veteran): orthogonal up to 2 squares, cannot jump pieces.\n'
-                '- Generals can level up by combat captures.\n'
+                '- All generals move king-style (1 step any direction).\n'
+                '- Fragile marshals can panic retreat when threatened.\n'
+                '- Veteran/War Drummer can trigger stronger advance skills.\n'
+                '- Generals can level up through combat captures.\n'
                 '- Rarely, an army spawns with a second general.',
               ),
             ),
@@ -333,7 +334,8 @@ class _GeneralPrototypeScreenState extends State<GeneralPrototypeScreen> {
   }
 
   Widget _armySummaryCard(String title, ArmyDefinition army) {
-    final generals = army.countType(PieceType.general);
+    final comp = army.composition;
+    final generals = comp.generals;
     final hasVeteran = army.units.any(
       (unit) =>
           unit.type == PieceType.general &&
@@ -351,13 +353,7 @@ class _GeneralPrototypeScreenState extends State<GeneralPrototypeScreen> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            Text(
-              'R:${army.countType(PieceType.rook)} '
-              'N:${army.countType(PieceType.knight)} '
-              'B:${army.countType(PieceType.bishop)} '
-              'P:${army.countType(PieceType.pawn)} '
-              'G:$generals',
-            ),
+            Text(_armyIconSummary(army, generals)),
             if (hasVeteran) const Text('Includes veteran commander (G2).'),
             if (generals >= 2)
               const Text('Rare double-general army is active in this seed.'),
@@ -365,5 +361,14 @@ class _GeneralPrototypeScreenState extends State<GeneralPrototypeScreen> {
         ),
       ),
     );
+  }
+
+  String _armyIconSummary(ArmyDefinition army, int generals) {
+    final comp = army.composition;
+    return '♜${comp.rooks} '
+        '♞${comp.knights} '
+        '♝${comp.bishops} '
+        '♟${comp.pawns} '
+        '♚$generals';
   }
 }

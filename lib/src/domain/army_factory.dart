@@ -57,8 +57,8 @@ class ArmyFactory {
         ArmyUnit(type: PieceType.pawn),
         ArmyUnit(
           type: PieceType.general,
-          generalSkill: GeneralSkill.fieldCommander,
-          title: 'Line Captain',
+          generalSkill: GeneralSkill.fragileMarshal,
+          title: 'Nervous Marshal',
         ),
       ],
     );

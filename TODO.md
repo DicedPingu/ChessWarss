@@ -1,12 +1,25 @@
 # TODO - ChessWarss
 
-## P0 - Prototype Hardening
+## Active Sprint - Alpha Full Game Loop
 
-- [ ] Add full battle end-state handling for stalemate and no-legal-move edge cases.
-- [ ] Add formation selection screen with up to 3 generated layouts per side.
-- [ ] Enforce pawn-front placement constraints in formation generation.
-- [ ] Add battle replay log panel (turn-by-turn with captures and General XP events).
-- [ ] Add in-app seed input and explicit rematch with same seed.
+- [x] Replace static formation dialog with generated deployment plans (1-3 valid options, never forced to exactly 3).
+- [x] Add explicit pre-battle deployment phase where both sides place troops in legal zones.
+- [x] Ensure deployment phase disallows attacks/captures until battle officially starts.
+- [x] Rebalance General into a nerfed commander piece (king-like threat, tactical utility, no overpowering range).
+- [x] Add morale/hearts model per side and connect losses/captures/general safety to morale changes.
+- [x] Add limited "advance group" command to move multiple eligible units together.
+- [x] Add structured replay events and in-battle event panel (moves, captures, morale, commander XP, decisive events).
+- [x] Add setup controls for seed entry + rematch with same seed.
+- [x] Improve battle/world rendering performance for Linux desktop stability (reduced expensive repaints and heavy effects).
+- [x] Promote presentation/state names and copy from prototype wording to alpha wording across UI and files.
+
+## P0 - Alpha Hardening
+
+- [x] Add full battle end-state handling for stalemate and no-legal-move edge cases.
+- [x] Add formation selection screen with up to 3 generated layouts per side.
+- [x] Enforce pawn-front placement constraints in formation generation.
+- [x] Add battle replay log panel (turn-by-turn with captures and General XP events).
+- [x] Add in-app seed input and explicit rematch with same seed.
 
 ## P1 - Core Gameplay Expansion
 
