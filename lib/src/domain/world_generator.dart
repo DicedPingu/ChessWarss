@@ -6,9 +6,9 @@ import 'world.dart';
 
 class WorldGenerator {
   const WorldGenerator({
-    this.boardSize = 5,
+    this.boardSize = 7,
     this.armyFactory = const ArmyFactory(),
-  });
+  }) : assert(boardSize >= 3, 'boardSize must be at least 3.');
 
   final int boardSize;
   final ArmyFactory armyFactory;
@@ -18,7 +18,16 @@ class WorldGenerator {
     required List<PlayerType> playerTypes,
     required MapPreset preset,
     required int seed,
+    int? boardSizeOverride,
+    int? armiesPerPlayerOverride,
   }) {
+    final effectiveBoardSize = (boardSizeOverride ?? boardSize)
+        .clamp(3, 10)
+        .toInt();
+    final maxArmiesByBoard = effectiveBoardSize <= 3 ? 3 : 4;
+    final effectiveArmiesPerPlayer = (armiesPerPlayerOverride ?? 3)
+        .clamp(2, maxArmiesByBoard)
+        .toInt();
     final random = Random(seed);
     final players = List<PlayerSlot>.generate(playerCount, (index) {
       return PlayerSlot(
@@ -28,20 +37,25 @@ class WorldGenerator {
       );
     });
 
-    final protectedTiles = _spawnTilesByPlayer(
+    final spawnTilesByPlayer = _spawnTilesByPlayer(
       playerCount,
-    ).expand((positions) => positions).toSet();
+      boardSize: effectiveBoardSize,
+      armiesPerPlayer: effectiveArmiesPerPlayer,
+    );
+    final protectedTiles = spawnTilesByPlayer
+        .expand((positions) => positions)
+        .toSet();
 
     final blockedStrategic = _blockedStrategicTiles(
-      boardSize: boardSize,
+      boardSize: effectiveBoardSize,
       seed: seed,
       preset: preset,
       protectedTiles: protectedTiles,
     );
 
     final tiles = <MapTile>[];
-    for (var row = 0; row < boardSize; row++) {
-      for (var col = 0; col < boardSize; col++) {
+    for (var row = 0; row < effectiveBoardSize; row++) {
+      for (var col = 0; col < effectiveBoardSize; col++) {
         final position = BoardPosition(row, col);
         final terrain = blockedStrategic.contains(position)
             ? TerrainType.blocked
@@ -65,8 +79,9 @@ class WorldGenerator {
       final armySet = armyFactory.createArmySet(
         playerId: playerId,
         random: random,
+        armiesPerPlayer: effectiveArmiesPerPlayer,
       );
-      final spawns = _spawnTilesByPlayer(playerCount)[playerId];
+      final spawns = spawnTilesByPlayer[playerId];
       for (var i = 0; i < armySet.armies.length; i++) {
         stacks.add(
           ArmyStack(
@@ -75,32 +90,253 @@ class WorldGenerator {
             army: armySet.armies[i],
             position: spawns[i],
             label: 'A${i + 1}',
+            entrenchedUntilRound: null,
+            forcedMarchRound: null,
+            fatigue: 0,
           ),
         );
       }
     }
 
+    final settlements = _generateSettlements(
+      boardSize: effectiveBoardSize,
+      playerCount: playerCount,
+      blockedStrategic: blockedStrategic,
+      spawnTilesByPlayer: spawnTilesByPlayer,
+    );
+    final treasuryByPlayer = <int, int>{
+      for (final player in players) player.id: 0,
+    };
+    final commandPointsByPlayer = <int, int>{
+      for (final player in players) player.id: 3,
+    };
+    final foodByPlayer = <int, int>{for (final player in players) player.id: 8};
+
     return WorldState(
-      size: boardSize,
+      size: effectiveBoardSize,
       tiles: tiles,
+      settlements: settlements,
+      camps: const <CampState>[],
       players: players,
       activePlayerIndex: 0,
       round: 1,
       stacks: stacks,
+      commandPointMax: 3,
+      commandPointsByPlayer: commandPointsByPlayer,
+      foodByPlayer: foodByPlayer,
+      treasuryByPlayer: treasuryByPlayer,
       preset: preset,
       seed: seed,
-      log: ['Match started: ${preset.name} on ${boardSize}x$boardSize.'],
+      log: [
+        'Match started: ${preset.name} on $effectiveBoardSize'
+            'x$effectiveBoardSize with $effectiveArmiesPerPlayer armies per side.',
+      ],
     );
   }
 
-  List<List<BoardPosition>> _spawnTilesByPlayer(int playerCount) {
-    final layout = <List<BoardPosition>>[
-      const [BoardPosition(4, 0), BoardPosition(4, 1), BoardPosition(3, 0)],
-      const [BoardPosition(0, 4), BoardPosition(0, 3), BoardPosition(1, 4)],
-      const [BoardPosition(0, 0), BoardPosition(0, 1), BoardPosition(1, 0)],
-      const [BoardPosition(4, 4), BoardPosition(4, 3), BoardPosition(3, 4)],
+  List<SettlementState> _generateSettlements({
+    required int boardSize,
+    required int playerCount,
+    required Set<BoardPosition> blockedStrategic,
+    required List<List<BoardPosition>> spawnTilesByPlayer,
+  }) {
+    final settlements = <SettlementState>[];
+    final occupied = <BoardPosition>{};
+
+    for (var playerId = 0; playerId < playerCount; playerId++) {
+      final capitalPos = spawnTilesByPlayer[playerId].first;
+      occupied.add(capitalPos);
+      settlements.add(
+        SettlementState(
+          id: 'capital_p${playerId + 1}',
+          name: 'Capital ${playerId + 1}',
+          position: capitalPos,
+          ownerId: playerId,
+          tier: SettlementTier.castle,
+          cultureRating: 3,
+          taxYield: 3,
+          supplyStock: 2,
+          garrisonCapacity: 5,
+          garrisonedUnits: 0,
+          unrest: 0,
+          levyCooldown: 0,
+          trapType: SettlementTrapType.defensiveDitch,
+          trapArmed: false,
+        ),
+      );
+
+      final villagePos = _firstOpenSettlementTile(
+        candidates: spawnTilesByPlayer[playerId].skip(1),
+        occupied: occupied,
+        blockedStrategic: blockedStrategic,
+        boardSize: boardSize,
+      );
+      if (villagePos != null) {
+        occupied.add(villagePos);
+        settlements.add(
+          SettlementState(
+            id: 'village_p${playerId + 1}',
+            name: 'Village ${playerId + 1}',
+            position: villagePos,
+            ownerId: playerId,
+            tier: SettlementTier.village,
+            cultureRating: 1,
+            taxYield: 1,
+            supplyStock: 3,
+            garrisonCapacity: 2,
+            garrisonedUnits: 0,
+            unrest: 0,
+            levyCooldown: 0,
+            trapType: SettlementTrapType.none,
+            trapArmed: false,
+          ),
+        );
+      }
+    }
+
+    final center = BoardPosition(boardSize ~/ 2, boardSize ~/ 2);
+    final townPosition = _firstOpenSettlementTile(
+      candidates: [
+        center,
+        center.offset(-1, 0),
+        center.offset(1, 0),
+        center.offset(0, -1),
+        center.offset(0, 1),
+      ],
+      occupied: occupied,
+      blockedStrategic: blockedStrategic,
+      boardSize: boardSize,
+    );
+    if (townPosition != null) {
+      occupied.add(townPosition);
+      settlements.add(
+        SettlementState(
+          id: 'market_central',
+          name: 'Central Market',
+          position: townPosition,
+          ownerId: -1,
+          tier: SettlementTier.town,
+          cultureRating: 2,
+          taxYield: 2,
+          supplyStock: 2,
+          garrisonCapacity: 3,
+          garrisonedUnits: 0,
+          unrest: 1,
+          levyCooldown: 1,
+          trapType: SettlementTrapType.none,
+          trapArmed: false,
+        ),
+      );
+    }
+
+    final neutralVillageCandidates = <BoardPosition>[
+      BoardPosition(boardSize ~/ 2, (boardSize ~/ 2) - 2),
+      BoardPosition(boardSize ~/ 2, (boardSize ~/ 2) + 2),
+      BoardPosition((boardSize ~/ 2) - 2, boardSize ~/ 2),
+      BoardPosition((boardSize ~/ 2) + 2, boardSize ~/ 2),
     ];
-    return layout.take(playerCount).toList();
+    var neutralVillageIndex = 1;
+    for (final candidate in neutralVillageCandidates) {
+      if (!candidate.inBounds(boardSize, boardSize)) {
+        continue;
+      }
+      if (blockedStrategic.contains(candidate) ||
+          occupied.contains(candidate)) {
+        continue;
+      }
+      settlements.add(
+        SettlementState(
+          id: 'neutral_village_$neutralVillageIndex',
+          name: 'Hamlet $neutralVillageIndex',
+          position: candidate,
+          ownerId: -1,
+          tier: SettlementTier.village,
+          cultureRating: 1,
+          taxYield: 1,
+          supplyStock: 2,
+          garrisonCapacity: 2,
+          garrisonedUnits: 0,
+          unrest: 1,
+          levyCooldown: 1,
+          trapType: SettlementTrapType.none,
+          trapArmed: false,
+        ),
+      );
+      occupied.add(candidate);
+      neutralVillageIndex++;
+      if (neutralVillageIndex > 2) {
+        break;
+      }
+    }
+
+    return settlements;
+  }
+
+  BoardPosition? _firstOpenSettlementTile({
+    required Iterable<BoardPosition> candidates,
+    required Set<BoardPosition> occupied,
+    required Set<BoardPosition> blockedStrategic,
+    required int boardSize,
+  }) {
+    for (final candidate in candidates) {
+      if (!candidate.inBounds(boardSize, boardSize)) {
+        continue;
+      }
+      if (blockedStrategic.contains(candidate)) {
+        continue;
+      }
+      if (occupied.contains(candidate)) {
+        continue;
+      }
+      return candidate;
+    }
+    return null;
+  }
+
+  List<List<BoardPosition>> _spawnTilesByPlayer(
+    int playerCount, {
+    required int boardSize,
+    required int armiesPerPlayer,
+  }) {
+    final southRow = boardSize - 1;
+    final northRow = 0;
+    final westCol = 0;
+    final eastCol = boardSize - 1;
+    final innerSouthRow = boardSize - 2;
+    final innerNorthRow = 1;
+    final innerWestCol = 1;
+    final innerEastCol = boardSize - 2;
+
+    final layout = <List<BoardPosition>>[
+      [
+        BoardPosition(southRow, westCol),
+        BoardPosition(southRow, innerWestCol),
+        BoardPosition(innerSouthRow, westCol),
+        BoardPosition(innerSouthRow, innerWestCol),
+      ],
+      [
+        BoardPosition(northRow, eastCol),
+        BoardPosition(northRow, innerEastCol),
+        BoardPosition(innerNorthRow, eastCol),
+        BoardPosition(innerNorthRow, innerEastCol),
+      ],
+      [
+        BoardPosition(northRow, westCol),
+        BoardPosition(northRow, innerWestCol),
+        BoardPosition(innerNorthRow, westCol),
+        BoardPosition(innerNorthRow, innerWestCol),
+      ],
+      [
+        BoardPosition(southRow, eastCol),
+        BoardPosition(southRow, innerEastCol),
+        BoardPosition(innerSouthRow, eastCol),
+        BoardPosition(innerSouthRow, innerEastCol),
+      ],
+    ];
+    return layout
+        .take(playerCount)
+        .map((positions) => positions.take(armiesPerPlayer).toList())
+        .toList();
   }
 
   Set<BoardPosition> _blockedStrategicTiles({
@@ -110,22 +346,25 @@ class WorldGenerator {
     required Set<BoardPosition> protectedTiles,
   }) {
     final blocked = <BoardPosition>{};
+    final center = boardSize ~/ 2;
 
     switch (preset) {
       case MapPreset.greatField:
-        for (final pos in const [BoardPosition(2, 2)]) {
-          if (!protectedTiles.contains(pos)) {
+        for (final pos in [BoardPosition(center, center)]) {
+          if (pos.inBounds(boardSize, boardSize) &&
+              !protectedTiles.contains(pos)) {
             blocked.add(pos);
           }
         }
       case MapPreset.tightRavine:
-        for (final pos in const [
-          BoardPosition(1, 2),
-          BoardPosition(2, 1),
-          BoardPosition(2, 3),
-          BoardPosition(3, 2),
+        for (final pos in [
+          BoardPosition(center - 1, center),
+          BoardPosition(center, center - 1),
+          BoardPosition(center, center + 1),
+          BoardPosition(center + 1, center),
         ]) {
-          if (!protectedTiles.contains(pos)) {
+          if (pos.inBounds(boardSize, boardSize) &&
+              !protectedTiles.contains(pos)) {
             blocked.add(pos);
           }
         }

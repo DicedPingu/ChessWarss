@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'presentation/alpha_game_screen.dart';
+import 'application/save/local_json_save_repository.dart';
+import 'application/save/save_repository.dart';
+import 'presentation/game_mode_menu_screen.dart';
 
 class ChessWarssApp extends StatelessWidget {
   const ChessWarssApp({super.key});
+
+  final SaveRepository _saveRepository = const LocalJsonSaveRepository();
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +36,7 @@ class ChessWarssApp extends StatelessWidget {
     );
 
     return MaterialApp(
-      title: 'ChessWarss Alpha',
+      title: 'ChessWarss',
       theme: baseTheme.copyWith(
         textTheme: textTheme,
         scaffoldBackgroundColor: const Color(0xFFF3ECDD),
@@ -86,7 +90,7 @@ class ChessWarssApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const AlphaGameScreen(),
+      home: GameModeMenuScreen(saveRepository: _saveRepository),
     );
   }
 }

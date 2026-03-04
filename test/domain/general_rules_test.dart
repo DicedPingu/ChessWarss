@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:chesswarss/src/domain/army_factory.dart';
+import 'package:chesswarss/src/domain/army.dart';
 import 'package:chesswarss/src/domain/battle_state.dart';
 import 'package:chesswarss/src/domain/board_position.dart';
 import 'package:chesswarss/src/domain/piece.dart';
@@ -54,7 +55,7 @@ void main() {
       );
     });
 
-    test('pawn cannot move two squares when path is blocked', () {
+    test('pawn can sidestep when forward path is blocked', () {
       const state = BattleState(
         rows: 8,
         cols: 8,
@@ -77,7 +78,10 @@ void main() {
       );
 
       final moves = state.legalMovesForPiece('p');
-      expect(moves, isEmpty);
+      expect(
+        moves,
+        unorderedEquals(const [BoardPosition(6, 3), BoardPosition(6, 5)]),
+      );
     });
 
     test('pawn cannot move two squares after leaving starting row', () {
@@ -326,6 +330,52 @@ void main() {
       expect(moved.moraleForPlayer(1), 4);
       expect(moved.moveLog.last, contains('panic retreat'));
     });
+
+    test('defensive ditch trap repulses contact advance once', () {
+      const state = BattleState(
+        rows: 8,
+        cols: 8,
+        activePlayer: 0,
+        southPlayerId: 0,
+        northPlayerId: 1,
+        pieces: [
+          BattlePiece(
+            id: 'p0',
+            ownerId: 0,
+            type: PieceType.pawn,
+            position: BoardPosition(6, 2),
+          ),
+          BattlePiece(
+            id: 'g0',
+            ownerId: 0,
+            type: PieceType.general,
+            position: BoardPosition(7, 4),
+            generalSkill: GeneralSkill.fieldCommander,
+          ),
+          BattlePiece(
+            id: 'g1',
+            ownerId: 1,
+            type: PieceType.general,
+            position: BoardPosition(0, 4),
+            generalSkill: GeneralSkill.fieldCommander,
+          ),
+        ],
+        moveLog: [],
+        trapArmedByPlayer: {1: true},
+        trapColumnByPlayer: {1: 2},
+      );
+
+      final advanced = state.advanceFrontline(maxUnits: 1);
+
+      expect(advanced.pieceById('p0'), isNull);
+      expect(advanced.trapArmedByPlayer[1], isFalse);
+      expect(
+        advanced.eventLog.any(
+          (event) => event.description.contains('ditch trap disrupted'),
+        ),
+        isTrue,
+      );
+    });
   });
 
   group('Army factory', () {
@@ -353,6 +403,173 @@ void main() {
       );
 
       expect(hasVeteran, isTrue);
+    });
+  });
+
+  group('Command structure and rout', () {
+    test('deployment normalizes one high king and additional officers', () {
+      const sideArmy = ArmyDefinition(
+        id: 'dual_general',
+        label: 'Dual General',
+        units: [
+          ArmyUnit(type: PieceType.pawn),
+          ArmyUnit(type: PieceType.pawn),
+          ArmyUnit(type: PieceType.rook),
+          ArmyUnit(
+            type: PieceType.general,
+            generalSkill: GeneralSkill.fieldCommander,
+          ),
+          ArmyUnit(
+            type: PieceType.general,
+            generalSkill: GeneralSkill.veteranCommander,
+          ),
+        ],
+      );
+
+      final state = BattleState.fromArmies(
+        southArmy: sideArmy,
+        northArmy: sideArmy,
+        southOwnerId: 0,
+        northOwnerId: 1,
+      );
+
+      final southGenerals = state.generalsForSide(0);
+      final highKings = southGenerals
+          .where(
+            (general) => general.resolvedGeneralRank == GeneralRank.highKing,
+          )
+          .length;
+      final officers = southGenerals
+          .where(
+            (general) => general.resolvedGeneralRank == GeneralRank.officer,
+          )
+          .length;
+
+      expect(highKings, 1);
+      expect(officers, 1);
+    });
+
+    test('contact advance can cause clash when command is even', () {
+      const state = BattleState(
+        rows: 6,
+        cols: 6,
+        activePlayer: 0,
+        southPlayerId: 0,
+        northPlayerId: 1,
+        pieces: [
+          BattlePiece(
+            id: 'g0',
+            ownerId: 0,
+            type: PieceType.general,
+            position: BoardPosition(5, 2),
+            generalSkill: GeneralSkill.fieldCommander,
+          ),
+          BattlePiece(
+            id: 'p0',
+            ownerId: 0,
+            type: PieceType.pawn,
+            position: BoardPosition(3, 2),
+          ),
+          BattlePiece(
+            id: 'g1',
+            ownerId: 1,
+            type: PieceType.general,
+            position: BoardPosition(0, 3),
+            generalSkill: GeneralSkill.fieldCommander,
+          ),
+          BattlePiece(
+            id: 'p1',
+            ownerId: 1,
+            type: PieceType.pawn,
+            position: BoardPosition(2, 2),
+          ),
+        ],
+        moveLog: [],
+      );
+
+      final advanced = state.advanceFrontline(maxUnits: 1);
+      expect(advanced.pieceById('p0'), isNull);
+      expect(advanced.pieceById('p1'), isNull);
+      expect(advanced.moveLog.last, contains('contacts'));
+    });
+
+    test('routing pressure can force desertion and morale collapse', () {
+      const state = BattleState(
+        rows: 6,
+        cols: 6,
+        activePlayer: 0,
+        southPlayerId: 0,
+        northPlayerId: 1,
+        pieces: [
+          BattlePiece(
+            id: 'r0',
+            ownerId: 0,
+            type: PieceType.rook,
+            position: BoardPosition(5, 0),
+          ),
+          BattlePiece(
+            id: 'g0',
+            ownerId: 0,
+            type: PieceType.general,
+            position: BoardPosition(5, 4),
+            generalSkill: GeneralSkill.fieldCommander,
+          ),
+          BattlePiece(
+            id: 'g1',
+            ownerId: 1,
+            type: PieceType.general,
+            position: BoardPosition(0, 4),
+            generalSkill: GeneralSkill.fragileMarshal,
+            generalRank: GeneralRank.officer,
+          ),
+          BattlePiece(
+            id: 'p1',
+            ownerId: 1,
+            type: PieceType.pawn,
+            position: BoardPosition(1, 2),
+          ),
+        ],
+        moveLog: [],
+        moraleByPlayer: {0: 6, 1: 1},
+      );
+
+      final moved = state.movePiece(
+        pieceId: 'r0',
+        to: const BoardPosition(4, 0),
+      );
+
+      expect(moved.moraleForPlayer(1), 0);
+      expect(moved.moraleStateForPlayer(1), MoraleState.collapsed);
+      expect(
+        moved.eventLog.any((event) => event.type == BattleEventType.rout),
+        isTrue,
+      );
+    });
+  });
+
+  group('General trait families', () {
+    test('skills map to stable trait families', () {
+      expect(
+        GeneralSkill.fragileMarshal.traitFamily,
+        GeneralTraitFamily.volatility,
+      );
+      expect(
+        GeneralSkill.fieldCommander.traitFamily,
+        GeneralTraitFamily.stability,
+      );
+      expect(
+        GeneralSkill.veteranCommander.traitFamily,
+        GeneralTraitFamily.aggression,
+      );
+      expect(GeneralSkill.warDrummer.traitFamily, GeneralTraitFamily.momentum);
+    });
+
+    test('trait family labels are plain-language and non-empty', () {
+      for (final skill in GeneralSkill.values) {
+        expect(skill.traitFamilyLabel.trim(), isNotEmpty);
+      }
+      expect(GeneralSkill.fieldCommander.traitFamilyLabel, 'Stability');
+      expect(GeneralSkill.warDrummer.traitFamilyLabel, 'Momentum');
     });
   });
 }

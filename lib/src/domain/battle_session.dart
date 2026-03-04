@@ -65,6 +65,9 @@ class BattleSession {
             generalSkill: piece.type == PieceType.general
                 ? piece.generalSkill
                 : null,
+            generalRank: piece.type == PieceType.general
+                ? piece.resolvedGeneralRank
+                : null,
             title: piece.type == PieceType.general ? 'General' : null,
           ),
         )

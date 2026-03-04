@@ -10,9 +10,12 @@ enum BattleEventType {
   capture,
   moraleShift,
   advance,
+  rout,
   generalProgress,
   generalSkill,
 }
+
+enum MoraleState { steady, wavering, routing, collapsed }
 
 class BattleEvent {
   const BattleEvent({
@@ -22,6 +25,7 @@ class BattleEvent {
     this.actorPlayerId,
     this.targetPlayerId,
     this.pieceId,
+    this.fromPosition,
     this.position,
     this.delta,
   });
@@ -32,12 +36,29 @@ class BattleEvent {
   final int? actorPlayerId;
   final int? targetPlayerId;
   final String? pieceId;
+  final BoardPosition? fromPosition;
   final BoardPosition? position;
   final int? delta;
 }
 
 class BattleDeploymentPlan {
   const BattleDeploymentPlan({
+    required this.id,
+    required this.formation,
+    required this.label,
+    required this.summary,
+    required this.pieces,
+  });
+
+  final String id;
+  final BattleFormation formation;
+  final String label;
+  final String summary;
+  final List<BattlePiece> pieces;
+}
+
+class BattleSideDeploymentPlan {
+  const BattleSideDeploymentPlan({
     required this.id,
     required this.formation,
     required this.label,
@@ -67,6 +88,8 @@ class BattleState {
     this.moraleByPlayer = const <int, int>{},
     this.maxMorale = 6,
     this.generalSkillUsedByPlayer = const <int, bool>{},
+    this.trapArmedByPlayer = const <int, bool>{},
+    this.trapColumnByPlayer = const <int, int>{},
   });
 
   final int rows;
@@ -82,6 +105,8 @@ class BattleState {
   final Map<int, int> moraleByPlayer;
   final int maxMorale;
   final Map<int, bool> generalSkillUsedByPlayer;
+  final Map<int, bool> trapArmedByPlayer;
+  final Map<int, int> trapColumnByPlayer;
 
   factory BattleState.fromArmies({
     required ArmyDefinition southArmy,
@@ -129,7 +154,15 @@ class BattleState {
     required int rows,
     required int cols,
     Set<BoardPosition> blockedCells = const <BoardPosition>{},
+    Map<int, int>? initialMoraleByPlayer,
+    int maxMorale = 6,
+    Map<int, bool> trapArmedByPlayer = const <int, bool>{},
+    Map<int, int> trapColumnByPlayer = const <int, int>{},
+    List<BattleEvent> extraEvents = const <BattleEvent>[],
   }) {
+    final morale =
+        initialMoraleByPlayer ??
+        <int, int>{southOwnerId: maxMorale, northOwnerId: maxMorale};
     return BattleState(
       rows: rows,
       cols: cols,
@@ -146,15 +179,18 @@ class BattleState {
           description:
               'Deployment locked: ${plan.label}. Opening captures disabled on first move.',
         ),
+        ...extraEvents,
       ],
       blockedCells: blockedCells,
       disableOpeningCaptures: true,
-      moraleByPlayer: <int, int>{southOwnerId: 6, northOwnerId: 6},
-      maxMorale: 6,
+      moraleByPlayer: morale,
+      maxMorale: maxMorale,
       generalSkillUsedByPlayer: <int, bool>{
         southOwnerId: false,
         northOwnerId: false,
       },
+      trapArmedByPlayer: trapArmedByPlayer,
+      trapColumnByPlayer: trapColumnByPlayer,
     );
   }
 
@@ -168,38 +204,27 @@ class BattleState {
     Set<BoardPosition> blockedCells = const <BoardPosition>{},
     BattleFormation preferredFormation = BattleFormation.balanced,
   }) {
-    final formationOrder = _formationOrder(preferredFormation);
-    final maxPlans = rows * cols <= 36 ? 2 : 3;
-    final styles = <_DeploymentStyle>[
-      const _DeploymentStyle(
-        suffix: 'Central Anchor',
-        columnRotation: 0,
-        mirrorColumns: false,
-        reservePawns: false,
-      ),
-      const _DeploymentStyle(
-        suffix: 'Offset Lanes',
-        columnRotation: 1,
-        mirrorColumns: false,
-        reservePawns: false,
-      ),
-      const _DeploymentStyle(
-        suffix: 'Mirrored Pressure',
-        columnRotation: 0,
-        mirrorColumns: true,
-        reservePawns: true,
-      ),
-    ];
+    final eligibleFormations = _eligibleFormationsForBattle(
+      southArmy: southArmy,
+      northArmy: northArmy,
+    );
+    final formationOrder = _formationOrder(
+      preferredFormation,
+    ).where(eligibleFormations.contains).toList();
+    if (formationOrder.isEmpty) {
+      formationOrder.add(BattleFormation.balanced);
+    }
+    final strongestSkill = _betterGeneralSkill(
+      _strongestGeneralSkillInArmy(southArmy),
+      _strongestGeneralSkillInArmy(northArmy),
+    );
+    final styles = _deploymentStylesForSkill(strongestSkill);
 
     final plans = <BattleDeploymentPlan>[];
     final signatures = <String>{};
 
     for (final formation in formationOrder) {
       for (final style in styles) {
-        if (plans.length >= maxPlans) {
-          break;
-        }
-
         try {
           final occupiedCells = <BoardPosition>{};
           final southPieces = _deployArmy(
@@ -215,6 +240,7 @@ class BattleState {
             columnRotation: style.columnRotation,
             mirrorColumns: style.mirrorColumns,
             reservePawns: style.reservePawns,
+            pawnFileLimit: style.pawnFileLimit,
           );
 
           occupiedCells.addAll(southPieces.map((piece) => piece.position));
@@ -232,6 +258,7 @@ class BattleState {
             columnRotation: style.columnRotation,
             mirrorColumns: style.mirrorColumns,
             reservePawns: style.reservePawns,
+            pawnFileLimit: style.pawnFileLimit,
           );
 
           final allPieces = [...southPieces, ...northPieces];
@@ -331,6 +358,98 @@ class BattleState {
     return plans;
   }
 
+  static List<BattleSideDeploymentPlan> generateSideDeploymentPlans({
+    required ArmyDefinition army,
+    required int ownerId,
+    required bool sideIsNorth,
+    int rows = 8,
+    int cols = 8,
+    Set<BoardPosition> blockedCells = const <BoardPosition>{},
+    BattleFormation preferredFormation = BattleFormation.balanced,
+  }) {
+    final eligibleFormations = _eligibleFormationsForArmy(army);
+    final formationOrder = _formationOrder(
+      preferredFormation,
+    ).where(eligibleFormations.contains).toList();
+    if (formationOrder.isEmpty) {
+      formationOrder.add(BattleFormation.balanced);
+    }
+    final styles = _deploymentStylesForSkill(
+      _strongestGeneralSkillInArmy(army),
+    );
+
+    final plans = <BattleSideDeploymentPlan>[];
+    final signatures = <String>{};
+
+    for (final formation in formationOrder) {
+      for (final style in styles) {
+        try {
+          final pieces = _deployArmy(
+            army: army,
+            ownerId: ownerId,
+            sideIsNorth: sideIsNorth,
+            rows: rows,
+            cols: cols,
+            idPrefix: '${sideIsNorth ? 'N' : 'S'}$ownerId',
+            blockedCells: blockedCells,
+            occupiedCells: <BoardPosition>{},
+            formation: formation,
+            columnRotation: style.columnRotation,
+            mirrorColumns: style.mirrorColumns,
+            reservePawns: style.reservePawns,
+            pawnFileLimit: style.pawnFileLimit,
+          );
+          final signature = _deploymentSignature(pieces);
+          if (!signatures.add(signature)) {
+            continue;
+          }
+
+          plans.add(
+            BattleSideDeploymentPlan(
+              id: '${sideIsNorth ? 'north' : 'south'}_${formation.name}_${style.suffix.replaceAll(' ', '_')}',
+              formation: formation,
+              label: '${_formationLabel(formation)} • ${style.suffix}',
+              summary: _deploymentSummary(
+                formation: formation,
+                style: style,
+                rows: rows,
+                cols: cols,
+              ),
+              pieces: pieces,
+            ),
+          );
+        } on StateError {
+          continue;
+        }
+      }
+    }
+
+    if (plans.isEmpty) {
+      final fallback = _deployArmy(
+        army: army,
+        ownerId: ownerId,
+        sideIsNorth: sideIsNorth,
+        rows: rows,
+        cols: cols,
+        idPrefix: '${sideIsNorth ? 'N' : 'S'}$ownerId',
+        blockedCells: blockedCells,
+        occupiedCells: <BoardPosition>{},
+        formation: preferredFormation,
+      );
+      plans.add(
+        BattleSideDeploymentPlan(
+          id: '${sideIsNorth ? 'north' : 'south'}_${preferredFormation.name}_fallback',
+          formation: preferredFormation,
+          label: '${_formationLabel(preferredFormation)} • Fallback',
+          summary: 'Fallback deployment on constrained battlefield.',
+          pieces: fallback,
+        ),
+      );
+    }
+
+    return plans;
+  }
+
   static List<BattleFormation> _formationOrder(BattleFormation preferred) {
     final order = <BattleFormation>[preferred];
     for (final formation in BattleFormation.values) {
@@ -341,14 +460,143 @@ class BattleState {
     return order;
   }
 
+  static Set<BattleFormation> _eligibleFormationsForBattle({
+    required ArmyDefinition southArmy,
+    required ArmyDefinition northArmy,
+  }) {
+    final south = _eligibleFormationsForArmy(southArmy);
+    final north = _eligibleFormationsForArmy(northArmy);
+    final shared = south.intersection(north);
+    if (shared.isNotEmpty) {
+      return shared;
+    }
+    return <BattleFormation>{BattleFormation.balanced};
+  }
+
+  static Set<BattleFormation> _eligibleFormationsForArmy(ArmyDefinition army) {
+    final composition = army.composition;
+    final strongestSkill = _strongestGeneralSkillInArmy(army);
+    final isFragile = strongestSkill == GeneralSkill.fragileMarshal;
+    final veteranCommand =
+        strongestSkill == GeneralSkill.veteranCommander ||
+        strongestSkill == GeneralSkill.warDrummer;
+    final flankAssets = composition.rooks + composition.bishops;
+    final mobileAssets = composition.knights;
+    final frontPressure = composition.pawns + composition.knights;
+
+    final allowed = <BattleFormation>{BattleFormation.balanced};
+
+    if (flankAssets >= 1 || mobileAssets >= 2 || veteranCommand) {
+      allowed.add(BattleFormation.flankGuard);
+    }
+
+    if (!isFragile && (frontPressure >= 5 || veteranCommand)) {
+      allowed.add(BattleFormation.spearhead);
+    }
+
+    if (strongestSkill == GeneralSkill.warDrummer) {
+      allowed
+        ..add(BattleFormation.flankGuard)
+        ..add(BattleFormation.spearhead);
+    }
+
+    return allowed;
+  }
+
+  static GeneralSkill _strongestGeneralSkillInArmy(ArmyDefinition army) {
+    GeneralSkill strongest = GeneralSkill.fieldCommander;
+    var foundGeneral = false;
+
+    for (final unit in army.units) {
+      if (unit.type != PieceType.general || unit.generalSkill == null) {
+        continue;
+      }
+      final skill = unit.generalSkill!;
+      if (!foundGeneral ||
+          _generalSkillRank(skill) > _generalSkillRank(strongest)) {
+        strongest = skill;
+      }
+      foundGeneral = true;
+    }
+
+    return strongest;
+  }
+
+  static GeneralSkill _betterGeneralSkill(
+    GeneralSkill first,
+    GeneralSkill second,
+  ) {
+    return _generalSkillRank(first) >= _generalSkillRank(second)
+        ? first
+        : second;
+  }
+
+  static List<_DeploymentStyle> _deploymentStylesForSkill(
+    GeneralSkill strongestSkill,
+  ) {
+    final styles = <_DeploymentStyle>[
+      const _DeploymentStyle(
+        suffix: 'Standard Bearer',
+        columnRotation: 0,
+        mirrorColumns: false,
+        reservePawns: false,
+      ),
+      const _DeploymentStyle(
+        suffix: 'Skirmisher Lanes',
+        columnRotation: 1,
+        mirrorColumns: false,
+        reservePawns: false,
+      ),
+      const _DeploymentStyle(
+        suffix: 'Hammer & Anvil',
+        columnRotation: 0,
+        mirrorColumns: true,
+        reservePawns: true,
+      ),
+      const _DeploymentStyle(
+        suffix: 'Peasant Wall',
+        columnRotation: 0,
+        mirrorColumns: false,
+        reservePawns: true,
+        pawnFileLimit: 2,
+      ),
+    ];
+
+    if (_generalSkillRank(strongestSkill) >=
+        _generalSkillRank(GeneralSkill.veteranCommander)) {
+      styles.add(
+        const _DeploymentStyle(
+          suffix: 'Staggered Phalanx',
+          columnRotation: 2,
+          mirrorColumns: false,
+          reservePawns: true,
+        ),
+      );
+    }
+
+    if (strongestSkill == GeneralSkill.warDrummer) {
+      styles.add(
+        const _DeploymentStyle(
+          suffix: 'Drumline Surge',
+          columnRotation: 1,
+          mirrorColumns: true,
+          reservePawns: true,
+          pawnFileLimit: 3,
+        ),
+      );
+    }
+
+    return styles;
+  }
+
   static String _formationLabel(BattleFormation formation) {
     switch (formation) {
       case BattleFormation.balanced:
-        return 'Balanced';
+        return 'Shieldwall';
       case BattleFormation.flankGuard:
-        return 'Flank Guard';
+        return 'Wing Guard';
       case BattleFormation.spearhead:
-        return 'Spearhead';
+        return 'Spear Wedge';
     }
   }
 
@@ -359,9 +607,9 @@ class BattleState {
     required int cols,
   }) {
     final base = switch (formation) {
-      BattleFormation.balanced => 'Symmetric center control',
-      BattleFormation.flankGuard => 'Wide flank cover',
-      BattleFormation.spearhead => 'Aggressive center pressure',
+      BattleFormation.balanced => 'Disciplined shieldwall hold',
+      BattleFormation.flankGuard => 'Guarded wings and archer lanes',
+      BattleFormation.spearhead => 'Aggressive wedge toward center',
     };
     final board = rows * cols <= 36 ? 'compact board' : 'open board';
     return '$base using ${style.suffix.toLowerCase()} on $board.';
@@ -420,8 +668,43 @@ class BattleState {
     return moraleByPlayer[playerId] ?? maxMorale;
   }
 
+  MoraleState moraleStateForPlayer(int playerId) {
+    final morale = moraleForPlayer(playerId);
+    if (morale <= 0) {
+      return MoraleState.collapsed;
+    }
+    return _moraleStateFromMoraleAndCommand(
+      morale,
+      _commandStrengthForPlayer(playerId),
+    );
+  }
+
   bool moraleBroken(int playerId) {
-    return moraleForPlayer(playerId) <= 0;
+    return moraleStateForPlayer(playerId) == MoraleState.collapsed;
+  }
+
+  int _commandStrengthForPlayer(int playerId) {
+    var score = 0;
+    for (final general in generalsForSide(playerId)) {
+      score += general.commandWeight;
+    }
+    return score;
+  }
+
+  MoraleState _moraleStateFromMoraleAndCommand(
+    int morale,
+    int commandStrength,
+  ) {
+    final routingThreshold = (2 - commandStrength).clamp(1, 3);
+    final waveringThreshold = (4 - (commandStrength ~/ 2)).clamp(2, 4);
+
+    if (morale <= routingThreshold) {
+      return MoraleState.routing;
+    }
+    if (morale <= waveringThreshold) {
+      return MoraleState.wavering;
+    }
+    return MoraleState.steady;
   }
 
   bool hasAnyLegalMove(int playerId) {
@@ -522,7 +805,11 @@ class BattleState {
         continue;
       }
       final forward = _forwardSquare(piece);
-      if (_isOpenSquare(forward)) {
+      if (!forward.inBounds(rows, cols) || isBlocked(forward)) {
+        continue;
+      }
+      final occupant = pieceAt(forward);
+      if (occupant == null || occupant.ownerId != piece.ownerId) {
         return true;
       }
     }
@@ -566,6 +853,132 @@ class BattleState {
     }
     final skill = strongestGeneralSkill(playerId);
     return skill?.grantsMassAdvance == true;
+  }
+
+  BattleTurnOverlay? latestTurnOverlay() {
+    if (eventLog.isEmpty) {
+      return null;
+    }
+    var latestTurn = 0;
+    for (final event in eventLog) {
+      if (event.turn > latestTurn) {
+        latestTurn = event.turn;
+      }
+    }
+    if (latestTurn <= 0) {
+      return null;
+    }
+
+    final turnEvents = eventLog
+        .where((event) => event.turn == latestTurn)
+        .toList();
+    if (turnEvents.isEmpty) {
+      return null;
+    }
+
+    final marksByPosition = <BoardPosition, BattleOverlayMark>{};
+    final arrows = <BattleOverlayArrow>[];
+
+    void mark(BoardPosition position, BattleOverlayMark markType) {
+      final existing = marksByPosition[position];
+      if (existing == null ||
+          _overlayMarkPriority(markType) > _overlayMarkPriority(existing)) {
+        marksByPosition[position] = markType;
+      }
+    }
+
+    bool capturesOn(BoardPosition position) {
+      return turnEvents.any(
+        (event) =>
+            event.type == BattleEventType.capture && event.position == position,
+      );
+    }
+
+    for (final event in turnEvents) {
+      final to = event.position;
+      final from = event.fromPosition;
+      switch (event.type) {
+        case BattleEventType.move:
+          if (to != null) {
+            mark(
+              to,
+              capturesOn(to)
+                  ? BattleOverlayMark.capture
+                  : BattleOverlayMark.move,
+            );
+          }
+          if (from != null) {
+            mark(from, BattleOverlayMark.move);
+          }
+          if (from != null && to != null) {
+            arrows.add(
+              BattleOverlayArrow(
+                from: from,
+                to: to,
+                mark: capturesOn(to)
+                    ? BattleOverlayMark.capture
+                    : BattleOverlayMark.move,
+              ),
+            );
+          }
+        case BattleEventType.capture:
+          if (to != null) {
+            mark(to, BattleOverlayMark.loss);
+          }
+        case BattleEventType.advance:
+          final lower = event.description.toLowerCase();
+          final isTrap = lower.contains('trap');
+          final isLoss = lower.contains('repulsed') || lower.contains('fell');
+          if (to != null) {
+            mark(
+              to,
+              isTrap
+                  ? BattleOverlayMark.hazard
+                  : isLoss
+                  ? BattleOverlayMark.loss
+                  : BattleOverlayMark.move,
+            );
+          }
+          if (from != null) {
+            mark(from, BattleOverlayMark.move);
+          }
+          if (from != null && to != null) {
+            arrows.add(
+              BattleOverlayArrow(
+                from: from,
+                to: to,
+                mark: isTrap
+                    ? BattleOverlayMark.hazard
+                    : isLoss
+                    ? BattleOverlayMark.loss
+                    : BattleOverlayMark.move,
+              ),
+            );
+          }
+        case BattleEventType.rout:
+          if (to != null) {
+            mark(to, BattleOverlayMark.loss);
+          }
+        case BattleEventType.deployment:
+        case BattleEventType.moraleShift:
+        case BattleEventType.generalProgress:
+        case BattleEventType.generalSkill:
+          continue;
+      }
+    }
+
+    if (marksByPosition.isEmpty && arrows.isEmpty) {
+      return null;
+    }
+    arrows.sort(
+      (a, b) =>
+          _overlayMarkPriority(b.mark).compareTo(_overlayMarkPriority(a.mark)),
+    );
+    return BattleTurnOverlay(
+      turn: latestTurn,
+      marksByPosition: marksByPosition,
+      arrows: arrows.take(3).toList(),
+    );
   }
 
   BattleState advanceFrontline({int maxUnits = 3}) {
@@ -614,7 +1027,11 @@ class BattleState {
         continue;
       }
       final forward = _forwardSquare(piece);
-      if (_isOpenSquare(forward)) {
+      if (!forward.inBounds(rows, cols) || isBlocked(forward)) {
+        continue;
+      }
+      final occupant = pieceAt(forward);
+      if (occupant == null || occupant.ownerId != piece.ownerId) {
         candidates.add(piece);
       }
     }
@@ -632,50 +1049,264 @@ class BattleState {
     });
 
     final selected = candidates.take(maxUnits).toList();
-    final destinationById = <String, BoardPosition>{
-      for (final piece in selected) piece.id: _forwardSquare(piece),
-    };
-
-    final updatedPieces = pieces.map((piece) {
-      final destination = destinationById[piece.id];
-      if (destination == null) {
-        return piece;
-      }
-      return piece.copyWith(position: destination);
-    }).toList();
-
+    final updatedPieces = List<BattlePiece>.from(pieces);
     final updatedMorale = <int, int>{...moraleByPlayer};
     final updatedSkillUse = <int, bool>{...generalSkillUsedByPlayer};
+    final updatedTraps = <int, bool>{...trapArmedByPlayer};
+    final turn = moveLog.length + 1;
+    final events = <BattleEvent>[];
+    var movedCount = 0;
+    var contactCount = 0;
+    var captureCount = 0;
+    var clashCount = 0;
+    var repulsedCount = 0;
+
+    void pushMoraleDelta({
+      required int playerId,
+      required int delta,
+      required String reason,
+      BoardPosition? focalPosition,
+    }) {
+      final adjustedDelta = focalPosition == null
+          ? delta
+          : _applyLocalMoralePressure(
+              affectedPlayerId: playerId,
+              baseDelta: delta,
+              focalPosition: focalPosition,
+              boardPieces: updatedPieces,
+            );
+      final before = updatedMorale[playerId] ?? maxMorale;
+      final after = _clampMorale(before + adjustedDelta);
+      if (before == after) {
+        return;
+      }
+      updatedMorale[playerId] = after;
+      events.add(
+        BattleEvent(
+          turn: turn,
+          type: BattleEventType.moraleShift,
+          actorPlayerId: playerId,
+          delta: after - before,
+          position: focalPosition,
+          description:
+              'P${playerId + 1} morale $before->$after ($reason, local ${adjustedDelta >= 0 ? '+' : ''}$adjustedDelta).',
+        ),
+      );
+    }
+
+    BattlePiece? pieceAtInList(BoardPosition position) {
+      for (final piece in updatedPieces) {
+        if (piece.position == position) {
+          return piece;
+        }
+      }
+      return null;
+    }
+
+    for (final selectedPawn in selected) {
+      final attackerIndex = updatedPieces.indexWhere(
+        (piece) => piece.id == selectedPawn.id,
+      );
+      if (attackerIndex < 0) {
+        continue;
+      }
+
+      final attacker = updatedPieces[attackerIndex];
+      final forward = _forwardSquare(attacker);
+      if (!forward.inBounds(rows, cols) || isBlocked(forward)) {
+        continue;
+      }
+
+      final target = pieceAtInList(forward);
+      if (target == null) {
+        final trapOwner = otherPlayer;
+        final trapCol = trapColumnByPlayer[trapOwner];
+        if (updatedTraps[trapOwner] == true &&
+            trapCol != null &&
+            trapCol == forward.col) {
+          updatedPieces.removeWhere((piece) => piece.id == attacker.id);
+          repulsedCount++;
+          updatedTraps[trapOwner] = false;
+          pushMoraleDelta(
+            playerId: attacker.ownerId,
+            delta: -1,
+            reason: 'defensive ditch trap',
+            focalPosition: forward,
+          );
+          events.add(
+            BattleEvent(
+              turn: turn,
+              type: BattleEventType.advance,
+              actorPlayerId: trapOwner,
+              targetPlayerId: attacker.ownerId,
+              pieceId: attacker.id,
+              fromPosition: attacker.position,
+              position: forward,
+              description:
+                  'P${trapOwner + 1} ditch trap disrupted advancing militia on file $trapCol.',
+            ),
+          );
+          continue;
+        }
+
+        updatedPieces[attackerIndex] = attacker.copyWith(position: forward);
+        movedCount++;
+        events.add(
+          BattleEvent(
+            turn: turn,
+            type: BattleEventType.move,
+            actorPlayerId: attacker.ownerId,
+            pieceId: attacker.id,
+            fromPosition: attacker.position,
+            position: forward,
+            description:
+                'P${attacker.ownerId + 1} advanced ${attacker.type.name} to (${forward.row},${forward.col}).',
+          ),
+        );
+        continue;
+      }
+      if (target.ownerId == attacker.ownerId) {
+        continue;
+      }
+
+      contactCount++;
+      final outcome = _resolveAdvanceContact(
+        attacker: attacker,
+        defender: target,
+        fromGeneralSkill: fromGeneralSkill,
+        attackerPressure: _commandStrengthForPlayerFromPieces(
+          attacker.ownerId,
+          updatedPieces,
+        ),
+        defenderPressure: _commandStrengthForPlayerFromPieces(
+          target.ownerId,
+          updatedPieces,
+        ),
+      );
+
+      switch (outcome) {
+        case _AdvanceContactOutcome.capture:
+          final defenderIndex = updatedPieces.indexWhere(
+            (piece) => piece.id == target.id,
+          );
+          if (defenderIndex >= 0) {
+            updatedPieces.removeAt(defenderIndex);
+          }
+          final shiftedIndex = updatedPieces.indexWhere(
+            (piece) => piece.id == attacker.id,
+          );
+          if (shiftedIndex >= 0) {
+            updatedPieces[shiftedIndex] = updatedPieces[shiftedIndex].copyWith(
+              position: forward,
+            );
+          }
+          captureCount++;
+          movedCount++;
+          events.add(
+            BattleEvent(
+              turn: turn,
+              type: BattleEventType.capture,
+              actorPlayerId: attacker.ownerId,
+              targetPlayerId: target.ownerId,
+              pieceId: target.id,
+              fromPosition: attacker.position,
+              position: forward,
+              description:
+                  'P${attacker.ownerId + 1} broke contact and captured ${target.type.name} at (${forward.row},${forward.col}).',
+            ),
+          );
+          pushMoraleDelta(
+            playerId: target.ownerId,
+            delta: -_moraleLossForCapture(target.type),
+            reason: 'advance contact loss',
+            focalPosition: forward,
+          );
+          if (target.type == PieceType.general) {
+            pushMoraleDelta(
+              playerId: attacker.ownerId,
+              delta: 1,
+              reason: 'enemy commander broken in contact',
+              focalPosition: forward,
+            );
+          }
+        case _AdvanceContactOutcome.clash:
+          updatedPieces.removeWhere(
+            (piece) => piece.id == attacker.id || piece.id == target.id,
+          );
+          clashCount++;
+          events.add(
+            BattleEvent(
+              turn: turn,
+              type: BattleEventType.advance,
+              actorPlayerId: attacker.ownerId,
+              targetPlayerId: target.ownerId,
+              pieceId: attacker.id,
+              fromPosition: attacker.position,
+              position: forward,
+              description:
+                  'P${attacker.ownerId + 1} and P${target.ownerId + 1} clashed and both units fell at (${forward.row},${forward.col}).',
+            ),
+          );
+          pushMoraleDelta(
+            playerId: attacker.ownerId,
+            delta: -1,
+            reason: 'contact clash losses',
+            focalPosition: forward,
+          );
+          pushMoraleDelta(
+            playerId: target.ownerId,
+            delta: -1,
+            reason: 'contact clash losses',
+            focalPosition: forward,
+          );
+        case _AdvanceContactOutcome.repulsed:
+          updatedPieces.removeWhere((piece) => piece.id == attacker.id);
+          repulsedCount++;
+          events.add(
+            BattleEvent(
+              turn: turn,
+              type: BattleEventType.advance,
+              actorPlayerId: target.ownerId,
+              targetPlayerId: attacker.ownerId,
+              pieceId: attacker.id,
+              fromPosition: attacker.position,
+              position: forward,
+              description:
+                  'P${target.ownerId + 1} repulsed contact from P${attacker.ownerId + 1} at (${forward.row},${forward.col}).',
+            ),
+          );
+          pushMoraleDelta(
+            playerId: attacker.ownerId,
+            delta: -1,
+            reason: 'repulsed during contact advance',
+            focalPosition: forward,
+          );
+      }
+    }
+
+    if (movedCount == 0 &&
+        captureCount == 0 &&
+        clashCount == 0 &&
+        repulsedCount == 0) {
+      return this;
+    }
+
+    final activeSkill = strongestGeneralSkill(activePlayer);
+    final activeTrait = activeSkill?.traitFamily;
 
     final currentMorale = moraleForPlayer(activePlayer);
-    final moraleBoost = selected.length >= 2 || fromGeneralSkill ? 1 : 0;
+    // Momentum trait allows morale boost from less momentum (1 move/capture vs 2).
+    final momentumThreshold = activeTrait == GeneralTraitFamily.momentum
+        ? 1
+        : 2;
+    final moraleBoost =
+        (movedCount + captureCount) >= momentumThreshold || fromGeneralSkill
+        ? 1
+        : 0;
     var boostedMorale = currentMorale;
     if (moraleBoost > 0 && currentMorale < maxMorale) {
       boostedMorale = _clampMorale(currentMorale + moraleBoost);
       updatedMorale[activePlayer] = boostedMorale;
-    }
-
-    if (fromGeneralSkill) {
-      updatedSkillUse[activePlayer] = true;
-    }
-
-    final turn = moveLog.length + 1;
-    final logEntry = fromGeneralSkill
-        ? 'Skill ${skillLabel ?? 'General'}: P${activePlayer + 1} advanced ${selected.length} units.'
-        : 'Advance P${activePlayer + 1}: ${selected.length} pawns pushed forward.';
-
-    final events = <BattleEvent>[
-      BattleEvent(
-        turn: turn,
-        type: fromGeneralSkill
-            ? BattleEventType.generalSkill
-            : BattleEventType.advance,
-        actorPlayerId: activePlayer,
-        description: logEntry,
-      ),
-    ];
-
-    if (boostedMorale != currentMorale) {
       events.add(
         BattleEvent(
           turn: turn,
@@ -688,16 +1319,45 @@ class BattleState {
       );
     }
 
+    if (fromGeneralSkill) {
+      updatedSkillUse[activePlayer] = true;
+    }
+
+    final logEntry = fromGeneralSkill
+        ? 'Skill ${skillLabel ?? 'General'}: P${activePlayer + 1} advanced $movedCount, contacts $contactCount.'
+        : 'Advance P${activePlayer + 1}: moved $movedCount, contacts $contactCount.';
+
+    events.insert(
+      0,
+      BattleEvent(
+        turn: turn,
+        type: fromGeneralSkill
+            ? BattleEventType.generalSkill
+            : BattleEventType.advance,
+        actorPlayerId: activePlayer,
+        description:
+            '$logEntry Captures: $captureCount, clashes: $clashCount, repulsed: $repulsedCount.',
+      ),
+    );
+
     final retreat = _resolveFragileRetreat(
       boardPieces: updatedPieces,
       moraleByPlayer: updatedMorale,
       turn: turn,
     );
 
-    final finalEvents = [...events, ...retreat.events];
+    final rout = _resolveRoutPressure(
+      boardPieces: retreat.pieces,
+      moraleByPlayer: updatedMorale,
+      turn: turn,
+    );
+    final finalEvents = [...events, ...retreat.events, ...rout.events];
     final finalLog = retreat.logSuffix == null
         ? logEntry
         : '$logEntry | ${retreat.logSuffix}';
+    final routLog = rout.logSuffix == null
+        ? finalLog
+        : '$finalLog | ${rout.logSuffix}';
 
     return BattleState(
       rows: rows,
@@ -705,14 +1365,16 @@ class BattleState {
       activePlayer: otherPlayer,
       southPlayerId: southPlayerId,
       northPlayerId: northPlayerId,
-      pieces: retreat.pieces,
-      moveLog: [...moveLog, finalLog],
+      pieces: rout.pieces,
+      moveLog: [...moveLog, routLog],
       eventLog: [...eventLog, ...finalEvents],
       blockedCells: blockedCells,
       disableOpeningCaptures: disableOpeningCaptures,
       moraleByPlayer: updatedMorale,
       maxMorale: maxMorale,
       generalSkillUsedByPlayer: updatedSkillUse,
+      trapArmedByPlayer: updatedTraps,
+      trapColumnByPlayer: trapColumnByPlayer,
     );
   }
 
@@ -763,6 +1425,7 @@ class BattleState {
         type: BattleEventType.move,
         actorPlayerId: movingPiece.ownerId,
         pieceId: movingPiece.id,
+        fromPosition: movingPiece.position,
         position: to,
         description:
             'P${movingPiece.ownerId + 1} moved '
@@ -780,6 +1443,7 @@ class BattleState {
           actorPlayerId: movingPiece.ownerId,
           targetPlayerId: target.ownerId,
           pieceId: target.id,
+          fromPosition: movingPiece.position,
           position: to,
           description:
               'P${movingPiece.ownerId + 1} captured '
@@ -789,7 +1453,13 @@ class BattleState {
 
       final moraleLoss = _moraleLossForCapture(target.type);
       final defenderMorale = moraleForPlayer(target.ownerId);
-      final reducedMorale = _clampMorale(defenderMorale - moraleLoss);
+      final localizedLoss = _applyLocalMoralePressure(
+        affectedPlayerId: target.ownerId,
+        baseDelta: -moraleLoss,
+        focalPosition: to,
+        boardPieces: updatedPieces,
+      );
+      final reducedMorale = _clampMorale(defenderMorale + localizedLoss);
       if (reducedMorale != defenderMorale) {
         updatedMorale[target.ownerId] = reducedMorale;
         events.add(
@@ -798,7 +1468,8 @@ class BattleState {
             type: BattleEventType.moraleShift,
             actorPlayerId: movingPiece.ownerId,
             targetPlayerId: target.ownerId,
-            delta: -moraleLoss,
+            delta: reducedMorale - defenderMorale,
+            position: to,
             description:
                 'P${target.ownerId + 1} morale '
                 '$defenderMorale->$reducedMorale.',
@@ -808,7 +1479,13 @@ class BattleState {
 
       if (target.type == PieceType.general) {
         final attackerMorale = moraleForPlayer(movingPiece.ownerId);
-        final boostedMorale = _clampMorale(attackerMorale + 1);
+        final localizedBoost = _applyLocalMoralePressure(
+          affectedPlayerId: movingPiece.ownerId,
+          baseDelta: 1,
+          focalPosition: to,
+          boardPieces: updatedPieces,
+        );
+        final boostedMorale = _clampMorale(attackerMorale + localizedBoost);
         if (boostedMorale != attackerMorale) {
           updatedMorale[movingPiece.ownerId] = boostedMorale;
           events.add(
@@ -816,7 +1493,8 @@ class BattleState {
               turn: turn,
               type: BattleEventType.moraleShift,
               actorPlayerId: movingPiece.ownerId,
-              delta: 1,
+              delta: boostedMorale - attackerMorale,
+              position: to,
               description:
                   'P${movingPiece.ownerId + 1} morale '
                   '$attackerMorale->$boostedMorale after commander takedown.',
@@ -861,9 +1539,17 @@ class BattleState {
       moraleByPlayer: updatedMorale,
       turn: turn,
     );
+    final rout = _resolveRoutPressure(
+      boardPieces: retreat.pieces,
+      moraleByPlayer: updatedMorale,
+      turn: turn,
+    );
 
     if (retreat.logSuffix != null) {
       logEntry = '$logEntry | ${retreat.logSuffix}';
+    }
+    if (rout.logSuffix != null) {
+      logEntry = '$logEntry | ${rout.logSuffix}';
     }
 
     return BattleState(
@@ -872,14 +1558,16 @@ class BattleState {
       activePlayer: otherPlayer,
       southPlayerId: southPlayerId,
       northPlayerId: northPlayerId,
-      pieces: retreat.pieces,
+      pieces: rout.pieces,
       moveLog: [...moveLog, logEntry],
-      eventLog: [...eventLog, ...events, ...retreat.events],
+      eventLog: [...eventLog, ...events, ...retreat.events, ...rout.events],
       blockedCells: blockedCells,
       disableOpeningCaptures: disableOpeningCaptures,
       moraleByPlayer: updatedMorale,
       maxMorale: maxMorale,
       generalSkillUsedByPlayer: generalSkillUsedByPlayer,
+      trapArmedByPlayer: trapArmedByPlayer,
+      trapColumnByPlayer: trapColumnByPlayer,
     );
   }
 
@@ -942,6 +1630,167 @@ class BattleState {
       events: events,
       logSuffix: notes.isEmpty ? null : notes.join(', '),
     );
+  }
+
+  _AdvanceContactOutcome _resolveAdvanceContact({
+    required BattlePiece attacker,
+    required BattlePiece defender,
+    required bool fromGeneralSkill,
+    required int attackerPressure,
+    required int defenderPressure,
+  }) {
+    // Aggression trait increases contact impact (+1 swing).
+    final attackerTrait = strongestGeneralSkill(attacker.ownerId)?.traitFamily;
+    final aggressionBonus = attackerTrait == GeneralTraitFamily.aggression
+        ? 1
+        : 0;
+
+    final swing =
+        (fromGeneralSkill ? 1 : 0) +
+        aggressionBonus +
+        attackerPressure -
+        defenderPressure +
+        (_pieceImpact(defender.type) >= _pieceImpact(attacker.type) ? 1 : 0);
+
+    if (swing >= 2) {
+      return _AdvanceContactOutcome.capture;
+    }
+    if (swing >= 0) {
+      return _AdvanceContactOutcome.clash;
+    }
+    return _AdvanceContactOutcome.repulsed;
+  }
+
+  _RoutResolution _resolveRoutPressure({
+    required List<BattlePiece> boardPieces,
+    required Map<int, int> moraleByPlayer,
+    required int turn,
+  }) {
+    var currentPieces = boardPieces;
+    final events = <BattleEvent>[];
+    final notes = <String>[];
+
+    for (final playerId in [southPlayerId, northPlayerId]) {
+      final morale = moraleByPlayer[playerId] ?? maxMorale;
+      final command = _commandStrengthForPlayerFromPieces(
+        playerId,
+        currentPieces,
+      );
+      final state = morale <= 0
+          ? MoraleState.collapsed
+          : _moraleStateFromMoraleAndCommand(morale, command);
+      if (state != MoraleState.routing) {
+        continue;
+      }
+
+      final rallyScore = morale + command;
+      if (rallyScore >= 4) {
+        final after = _clampMorale(morale + 1);
+        moraleByPlayer[playerId] = after;
+        events.add(
+          BattleEvent(
+            turn: turn,
+            type: BattleEventType.rout,
+            actorPlayerId: playerId,
+            delta: after - morale,
+            description:
+                'P${playerId + 1} rallied from routing pressure ($morale->$after).',
+          ),
+        );
+        notes.add('P${playerId + 1} rallied');
+        continue;
+      }
+
+      final retreat = _retreatUnits(
+        pieces: currentPieces,
+        playerId: playerId,
+        maxUnits: command <= 1 ? 3 : 2,
+      );
+      currentPieces = retreat.pieces;
+      var deserted = 0;
+      if (retreat.movedCount == 0) {
+        final desertResult = _desertUnits(
+          pieces: currentPieces,
+          playerId: playerId,
+          maxUnits: command <= 1 ? 2 : 1,
+        );
+        currentPieces = desertResult.pieces;
+        deserted = desertResult.movedCount;
+      } else if (command == 0) {
+        final desertResult = _desertUnits(
+          pieces: currentPieces,
+          playerId: playerId,
+          maxUnits: 1,
+        );
+        currentPieces = desertResult.pieces;
+        deserted = desertResult.movedCount;
+      }
+
+      final afterMorale = _clampMorale(morale - 1);
+      moraleByPlayer[playerId] = afterMorale;
+
+      events.add(
+        BattleEvent(
+          turn: turn,
+          type: BattleEventType.rout,
+          actorPlayerId: playerId,
+          delta: afterMorale - morale,
+          description:
+              'P${playerId + 1} routing: ${retreat.movedCount} withdrew, $deserted deserted, morale $morale->$afterMorale.',
+        ),
+      );
+      notes.add(
+        'P${playerId + 1} routing (${retreat.movedCount} withdrew, $deserted deserted)',
+      );
+    }
+
+    return _RoutResolution(
+      pieces: currentPieces,
+      events: events,
+      logSuffix: notes.isEmpty ? null : notes.join(', '),
+    );
+  }
+
+  int _commandStrengthForPlayerFromPieces(
+    int playerId,
+    List<BattlePiece> boardPieces,
+  ) {
+    var score = 0;
+    for (final piece in boardPieces) {
+      if (piece.ownerId != playerId || piece.type != PieceType.general) {
+        continue;
+      }
+      score += piece.commandWeight;
+    }
+    return score;
+  }
+
+  _RetreatOutcome _desertUnits({
+    required List<BattlePiece> pieces,
+    required int playerId,
+    required int maxUnits,
+  }) {
+    final mutable = List<BattlePiece>.from(pieces);
+    final casualties = mutable
+        .where(
+          (piece) =>
+              piece.ownerId == playerId && piece.type != PieceType.general,
+        )
+        .toList();
+
+    casualties.sort((a, b) {
+      final frontA = playerId == southPlayerId
+          ? -a.position.row
+          : a.position.row;
+      final frontB = playerId == southPlayerId
+          ? -b.position.row
+          : b.position.row;
+      return frontB.compareTo(frontA);
+    });
+
+    final doomed = casualties.take(maxUnits).map((piece) => piece.id).toSet();
+    mutable.removeWhere((piece) => doomed.contains(piece.id));
+    return _RetreatOutcome(pieces: mutable, movedCount: doomed.length);
   }
 
   bool _hasFragileGeneral(int playerId, List<BattlePiece> boardPieces) {
@@ -1064,6 +1913,135 @@ class BattleState {
     return _RetreatOutcome(pieces: mutable, movedCount: moved);
   }
 
+  int _applyLocalMoralePressure({
+    required int affectedPlayerId,
+    required int baseDelta,
+    required BoardPosition focalPosition,
+    required List<BattlePiece> boardPieces,
+  }) {
+    var adjusted = baseDelta;
+    final friendlyGeneralsNearby = _countNearbyPieces(
+      playerId: affectedPlayerId,
+      focalPosition: focalPosition,
+      boardPieces: boardPieces,
+      generalsOnly: true,
+      maxDistance: 2,
+    );
+    final enemyGeneralsNearby = _countNearbyPieces(
+      playerId: affectedPlayerId == southPlayerId
+          ? northPlayerId
+          : southPlayerId,
+      focalPosition: focalPosition,
+      boardPieces: boardPieces,
+      generalsOnly: true,
+      maxDistance: 2,
+    );
+
+    final activeTrait = strongestGeneralSkill(affectedPlayerId)?.traitFamily;
+
+    if (baseDelta < 0) {
+      if (friendlyGeneralsNearby > 0) {
+        adjusted += 1;
+      }
+      // Stability mitigates morale loss.
+      if (activeTrait == GeneralTraitFamily.stability) {
+        adjusted += 1;
+      }
+      // Volatility amplifies morale loss.
+      if (activeTrait == GeneralTraitFamily.volatility) {
+        adjusted -= 1;
+      }
+      if (_hasFriendlyCohesionNear(
+        playerId: affectedPlayerId,
+        focalPosition: focalPosition,
+        boardPieces: boardPieces,
+      )) {
+        adjusted += 1;
+      }
+      final nearbyAllies = _countNearbyPieces(
+        playerId: affectedPlayerId,
+        focalPosition: focalPosition,
+        boardPieces: boardPieces,
+        generalsOnly: false,
+        maxDistance: 2,
+      );
+      if (nearbyAllies <= 1) {
+        adjusted -= 1;
+      }
+      if (enemyGeneralsNearby > 0) {
+        adjusted -= 1;
+      }
+    } else if (baseDelta > 0) {
+      if (friendlyGeneralsNearby > 0) {
+        adjusted += 1;
+      }
+      // Volatility amplifies morale gain.
+      if (activeTrait == GeneralTraitFamily.volatility) {
+        adjusted += 1;
+      }
+      if (enemyGeneralsNearby > 0) {
+        adjusted += 1;
+      }
+    }
+
+    adjusted = adjusted.clamp(baseDelta - 2, baseDelta + 2).toInt();
+    if (baseDelta < 0 && adjusted >= 0) {
+      return -1;
+    }
+    if (baseDelta > 0 && adjusted <= 0) {
+      return 1;
+    }
+    return adjusted;
+  }
+
+  int _countNearbyPieces({
+    required int playerId,
+    required BoardPosition focalPosition,
+    required List<BattlePiece> boardPieces,
+    required bool generalsOnly,
+    required int maxDistance,
+  }) {
+    var count = 0;
+    for (final piece in boardPieces) {
+      if (piece.ownerId != playerId) {
+        continue;
+      }
+      if (generalsOnly && piece.type != PieceType.general) {
+        continue;
+      }
+      final distance =
+          (piece.position.row - focalPosition.row).abs() +
+          (piece.position.col - focalPosition.col).abs();
+      if (distance <= maxDistance) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  bool _hasFriendlyCohesionNear({
+    required int playerId,
+    required BoardPosition focalPosition,
+    required List<BattlePiece> boardPieces,
+  }) {
+    var adjacentAllies = 0;
+    for (final piece in boardPieces) {
+      if (piece.ownerId != playerId || piece.type == PieceType.general) {
+        continue;
+      }
+      final distance =
+          (piece.position.row - focalPosition.row).abs() +
+          (piece.position.col - focalPosition.col).abs();
+      if (distance == 1) {
+        adjacentAllies++;
+      }
+      if (adjacentAllies >= 2) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   int _clampMorale(int value) {
     return value.clamp(0, maxMorale).toInt();
   }
@@ -1092,6 +2070,33 @@ class BattleState {
         return 2;
       case PieceType.general:
         return 3;
+    }
+  }
+
+  static int _pieceImpact(PieceType type) {
+    switch (type) {
+      case PieceType.pawn:
+        return 1;
+      case PieceType.knight:
+      case PieceType.bishop:
+        return 2;
+      case PieceType.rook:
+        return 3;
+      case PieceType.general:
+        return 4;
+    }
+  }
+
+  static int _overlayMarkPriority(BattleOverlayMark mark) {
+    switch (mark) {
+      case BattleOverlayMark.loss:
+        return 4;
+      case BattleOverlayMark.capture:
+        return 3;
+      case BattleOverlayMark.hazard:
+        return 2;
+      case BattleOverlayMark.move:
+        return 1;
     }
   }
 
@@ -1139,6 +2144,19 @@ class BattleState {
         final twoStepsForward = piece.position.offset(direction * 2, 0);
         if (_isOpenSquare(twoStepsForward)) {
           moves.add(twoStepsForward);
+        }
+      }
+    }
+
+    final forwardBlocked =
+        !oneStepForward.inBounds(rows, cols) ||
+        isBlocked(oneStepForward) ||
+        pieceAt(oneStepForward) != null;
+    if (forwardBlocked) {
+      for (final sideDelta in const [-1, 1]) {
+        final sideStep = piece.position.offset(0, sideDelta);
+        if (_isOpenSquare(sideStep)) {
+          moves.add(sideStep);
         }
       }
     }
@@ -1251,6 +2269,7 @@ class BattleState {
     int columnRotation = 0,
     bool mirrorColumns = false,
     bool reservePawns = false,
+    int? pawnFileLimit,
   }) {
     final used = <BoardPosition>{...occupiedCells};
     final pieces = <BattlePiece>[];
@@ -1284,8 +2303,16 @@ class BattleState {
     );
 
     var nextIndex = 0;
+    var hasHighKingAssigned = false;
 
     List<int> columnsFor(ArmyUnit unit) {
+      if (unit.type == PieceType.pawn && pawnFileLimit != null) {
+        return _pawnStackColumns(
+          centerColumns,
+          cols,
+          preferredFiles: pawnFileLimit,
+        );
+      }
       switch (formation) {
         case BattleFormation.balanced:
           switch (unit.type) {
@@ -1356,40 +2383,79 @@ class BattleState {
     }
 
     void placeUnit(ArmyUnit unit) {
+      GeneralRank? generalRank;
+      if (unit.type == PieceType.general) {
+        final declaredRank = unit.generalRank;
+        if (declaredRank == GeneralRank.highKing) {
+          generalRank = hasHighKingAssigned
+              ? GeneralRank.officer
+              : GeneralRank.highKing;
+        } else if (declaredRank == GeneralRank.officer) {
+          generalRank = GeneralRank.officer;
+        } else {
+          generalRank = hasHighKingAssigned
+              ? GeneralRank.officer
+              : GeneralRank.highKing;
+        }
+        if (generalRank == GeneralRank.highKing) {
+          hasHighKingAssigned = true;
+        }
+      }
+
       final preferredRows = rowsFor(unit);
       final preferredColumns = columnsFor(unit);
+      final strictPawnFiles =
+          pawnFileLimit != null && unit.type == PieceType.pawn;
       final rowOrder = <int>[...preferredRows, ...homeRows];
-      final colOrder = <int>[
-        ...preferredColumns,
-        ...centerColumns,
-        ...edgeColumns,
-      ];
-      final visitedRows = <int>{};
-      final visitedCols = <int>{};
-      for (final row in rowOrder) {
-        if (!visitedRows.add(row)) {
-          continue;
-        }
-        visitedCols.clear();
-        for (final col in colOrder) {
-          if (!visitedCols.add(col)) {
+      final colOrder = strictPawnFiles
+          ? preferredColumns
+          : <int>[...preferredColumns, ...centerColumns, ...edgeColumns];
+      final supportPasses = unit.type == PieceType.general
+          ? const <bool>[true, false]
+          : const <bool>[false];
+
+      for (final enforceEscort in supportPasses) {
+        final visitedRows = <int>{};
+        final visitedCols = <int>{};
+        for (final row in rowOrder) {
+          if (!visitedRows.add(row)) {
             continue;
           }
-          final pos = BoardPosition(row, col);
-          if (used.contains(pos) || blockedCells.contains(pos)) {
-            continue;
+          visitedCols.clear();
+          for (final col in colOrder) {
+            if (!visitedCols.add(col)) {
+              continue;
+            }
+            final pos = BoardPosition(row, col);
+            if (used.contains(pos) || blockedCells.contains(pos)) {
+              continue;
+            }
+            if (enforceEscort) {
+              final supportCount = _adjacentFriendlySupportCount(
+                at: pos,
+                ownerId: ownerId,
+                pieces: pieces,
+              );
+              if (supportCount == 0) {
+                continue;
+              }
+              if (_isCenterColumn(col, cols) && supportCount < 2) {
+                continue;
+              }
+            }
+            used.add(pos);
+            pieces.add(
+              BattlePiece(
+                id: '$idPrefix-${nextIndex++}',
+                ownerId: ownerId,
+                type: unit.type,
+                position: pos,
+                generalSkill: unit.generalSkill,
+                generalRank: generalRank,
+              ),
+            );
+            return;
           }
-          used.add(pos);
-          pieces.add(
-            BattlePiece(
-              id: '$idPrefix-${nextIndex++}',
-              ownerId: ownerId,
-              type: unit.type,
-              position: pos,
-              generalSkill: unit.generalSkill,
-            ),
-          );
-          return;
         }
       }
       throw StateError(
@@ -1402,6 +2468,33 @@ class BattleState {
     }
 
     return pieces;
+  }
+
+  static int _adjacentFriendlySupportCount({
+    required BoardPosition at,
+    required int ownerId,
+    required List<BattlePiece> pieces,
+  }) {
+    var count = 0;
+    for (final piece in pieces) {
+      if (piece.ownerId != ownerId || piece.type == PieceType.general) {
+        continue;
+      }
+      final rowDelta = (piece.position.row - at.row).abs();
+      final colDelta = (piece.position.col - at.col).abs();
+      final adjacent =
+          rowDelta <= 1 && colDelta <= 1 && !(rowDelta == 0 && colDelta == 0);
+      if (adjacent) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  static bool _isCenterColumn(int col, int cols) {
+    final leftCenter = (cols - 1) ~/ 2;
+    final rightCenter = cols ~/ 2;
+    return col == leftCenter || col == rightCenter;
   }
 
   static List<int> _applyColumnVariant(
@@ -1485,6 +2578,25 @@ class BattleState {
     }
     return merged;
   }
+
+  static List<int> _pawnStackColumns(
+    List<int> centerColumns,
+    int cols, {
+    required int preferredFiles,
+  }) {
+    if (centerColumns.isEmpty) {
+      return const <int>[];
+    }
+    final files = preferredFiles.clamp(
+      1,
+      cols >= 8
+          ? 4
+          : cols >= 6
+          ? 3
+          : 2,
+    );
+    return centerColumns.take(files).toList();
+  }
 }
 
 class BattleAction {
@@ -1497,6 +2609,32 @@ class BattleAction {
   final String pieceId;
   final BoardPosition to;
   final String? capturedPieceId;
+}
+
+enum BattleOverlayMark { move, capture, loss, hazard }
+
+class BattleOverlayArrow {
+  const BattleOverlayArrow({
+    required this.from,
+    required this.to,
+    required this.mark,
+  });
+
+  final BoardPosition from;
+  final BoardPosition to;
+  final BattleOverlayMark mark;
+}
+
+class BattleTurnOverlay {
+  const BattleTurnOverlay({
+    required this.turn,
+    required this.marksByPosition,
+    required this.arrows,
+  });
+
+  final int turn;
+  final Map<BoardPosition, BattleOverlayMark> marksByPosition;
+  final List<BattleOverlayArrow> arrows;
 }
 
 class _Vector {
@@ -1512,12 +2650,14 @@ class _DeploymentStyle {
     required this.columnRotation,
     required this.mirrorColumns,
     required this.reservePawns,
+    this.pawnFileLimit,
   });
 
   final String suffix;
   final int columnRotation;
   final bool mirrorColumns;
   final bool reservePawns;
+  final int? pawnFileLimit;
 }
 
 class _RetreatOutcome {
@@ -1529,6 +2669,20 @@ class _RetreatOutcome {
 
 class _RetreatResolution {
   const _RetreatResolution({
+    required this.pieces,
+    required this.events,
+    required this.logSuffix,
+  });
+
+  final List<BattlePiece> pieces;
+  final List<BattleEvent> events;
+  final String? logSuffix;
+}
+
+enum _AdvanceContactOutcome { capture, clash, repulsed }
+
+class _RoutResolution {
+  const _RoutResolution({
     required this.pieces,
     required this.events,
     required this.logSuffix,

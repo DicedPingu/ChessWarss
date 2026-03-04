@@ -1,14 +1,19 @@
 import 'piece.dart';
 
 class ArmyUnit {
-  const ArmyUnit({required this.type, this.generalSkill, this.title})
-    : assert(
-        type != PieceType.general || generalSkill != null,
-        'General units must define a skill.',
-      );
+  const ArmyUnit({
+    required this.type,
+    this.generalSkill,
+    this.generalRank,
+    this.title,
+  }) : assert(
+         type != PieceType.general || generalSkill != null,
+         'General units must define a skill.',
+       );
 
   final PieceType type;
   final GeneralSkill? generalSkill;
+  final GeneralRank? generalRank;
   final String? title;
 }
 
@@ -53,6 +58,7 @@ class ArmyComposition {
     required this.bishops,
     required this.generals,
     required this.veteranGenerals,
+    required this.highKings,
   });
 
   final int pawns;
@@ -61,6 +67,7 @@ class ArmyComposition {
   final int bishops;
   final int generals;
   final int veteranGenerals;
+  final int highKings;
 
   int get rookieGenerals => generals - veteranGenerals;
 
@@ -71,6 +78,7 @@ class ArmyComposition {
     var bishops = 0;
     var generals = 0;
     var veteranGenerals = 0;
+    var highKings = 0;
 
     for (final unit in units) {
       switch (unit.type) {
@@ -87,6 +95,10 @@ class ArmyComposition {
           if (unit.generalSkill == GeneralSkill.veteranCommander) {
             veteranGenerals++;
           }
+          if ((unit.generalRank ?? GeneralRank.highKing) ==
+              GeneralRank.highKing) {
+            highKings++;
+          }
       }
     }
 
@@ -97,6 +109,7 @@ class ArmyComposition {
       bishops: bishops,
       generals: generals,
       veteranGenerals: veteranGenerals,
+      highKings: highKings,
     );
   }
 }

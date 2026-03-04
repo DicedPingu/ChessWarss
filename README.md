@@ -1,98 +1,103 @@
 # ChessWarss
 
-ChessWarss is a Flutter alpha for a strategy game that combines a small Risk-style world map with chess-style tactical battles.
+ChessWarss is a Flutter strategy prototype where the campaign layer is Total War-lite and battles resolve on a chess-based tactical board.
 
-## Alpha Status
+## Core Vision
 
-Current build is playable and focused on proving the core loop:
+- Campaign: logistics, pressure, occupation, and territorial control.
+- `Eterna Mode`: singleplayer adventure baseline (one human faction against multiple AI factions).
+- Battles: chess-like movement and positional combat as the main resolver.
+- Historical tone: strongly Roman-inspired, but not strict historical reenactment.
 
-1. Setup match (2-4 players, Human/AI mix, map preset)
-2. Move separate army stacks on a 5x5 world map
-3. Trigger a chess-like battle when enemy stacks collide
-4. Resolve battle and return survivors to the world map
-5. Continue until one player remains
+## Non-Negotiable Direction
 
-## Implemented Features
+- Armies are constrained by logistics first.
+- Starvation in enemy territory must be possible.
+- Supply comes from forage, plunder, and local requisition.
+- Settlements are population and resource centers, not generic gold unit factories.
+- Capture outcomes are explicit: spare or destroy.
+- Sieges should feel time-based and costly while still using chess-based battle resolution.
+- Temporary camps should create defender advantages on the battle board (traps first).
+- Pawn units do not auto-promote into queens.
 
-- 5x5 strategic map with multiple terrain presets
-- Impassable tiles on strategic and tactical boards
-- Three separate starting armies per player (non-mergeable)
-- Simple General system:
-  - `G1` moves orthogonally by 1 tile
-  - `G2` (veteran) moves orthogonally by up to 2 tiles
-  - Generals gain experience from captures
-  - Rare second-general spawn support
-- Basic AI for world movement and battle moves
-- Deterministic seed-based map and army generation
-- Unit tests for General rules, world generation, and AI legality
-- Widget tests for setup and game start flow
+## Current Build Snapshot
 
-## Tech Stack
+The current build already includes:
 
-- Flutter
-- Dart
-- Material UI
+- Campaign map + tactical battle loop.
+- Two game modes (`Eterna Mode`, `Casus Belli`).
+- Battle doctrines, command traits, morale states, and tactical overlays.
+- Settlement and camp entities with defensive context modifiers.
+- Per-army supply and starvation tracking with desertion pressure.
+- Settlement and battle capture policies (`Spare` / `Destroy`) with occupation/devastation effects.
+- Settlement `Levy` action and forced levy intake on spared captures.
+- Board/HUD ownership clarity: turn-lit active units, owner badges, selected-army unit list + supply state.
+- Compact no-scroll strategic HUD: icon-first controls, contextual selection panels, and modal drill-down instead of always-on long lists.
+- Selectable settlements without army selection, with town effects shown directly in HUD context.
+- Tile-level field economy: open squares can be secured for recurring food or pillaged for immediate army supply.
+- Optional AI-vs-AI battle skip (auto-resolve) to keep campaign flow fast.
+- Battle anti-stall safeguard with forced resolution at turn limit.
+- Save/load, settings, and onboarding.
 
-## Project Layout
+This baseline is now being redirected toward the logistics-first war model above.
 
-- `lib/src/presentation/`: screens and widgets
-- `lib/src/domain/`: game rules, map generation, battle logic, AI
-- `test/domain/`: rules/engine tests
-- `docs/`: implementation notes
+## Current Scope (After Phase 1)
+
+Implemented:
+
+- Per-army supply (not only global player food).
+- Supply actions from campaign movement context: forage, plunder, requisition.
+- Open-field food control layer: secure/pillage mechanics tied to specific board squares.
+- Starvation ladder with escalating penalties.
+- Settlement capture outcomes (`spare` or `destroy`) with immediate and long-term effects.
+- Conquered-food scaling tied to occupation age and distance/connectivity.
+- Levy reinforcement from settlements and spared captures.
+
+## Scope Guardrails
+
+- Not a full Total War simulator.
+- Keep systems readable and testable.
+- Prefer fewer, strong mechanics over many weak subsystems.
+
+## Product References
+
+- Execution plan: `TODO.md`
+- Design intent and non-negotiables: `docs/GAME_VISION.md`
+- System reference: `docs/GAME_WIKI.md`
 
 ## Getting Started
 
 ### Prerequisites
 
-- Flutter SDK installed
-- Dart SDK installed (bundled with Flutter)
+- Flutter SDK
+- Dart SDK (bundled with Flutter)
 
-### Install dependencies
+### Install
 
 ```bash
 flutter pub get
 ```
 
-### Run the app
+### Run
 
 ```bash
 flutter run
 ```
-
-### Run the Linux app (safe mode for unstable GPU drivers)
-
-```bash
-./tool/dev_linux_safe.sh
-```
-
-Force software rendering if your desktop compositor becomes unstable:
-
-```bash
-RENDERER=software ./tool/dev_linux_safe.sh
-```
-
-### Run Android on Linux (low-freeze dev mode)
-
-```bash
-./tool/dev_android_safe.sh
-```
-
-This helper uses lower emulator/Gradle resource settings and a stable Android Studio JDK to keep the desktop responsive during development.
 
 ### Quality checks
 
 ```bash
 flutter analyze
 flutter test
+dart run tool/check_dependencies.dart
+./tool/check_docs_consistency.sh
+./tool/check_mcp_stack.sh
 ```
-
-## Roadmap
-
-See `TODO.md` for prioritized next steps.
 
 ## Current Limitations
 
-- Battle rules are intentionally simplified for alpha scope
-- AI is heuristic-based, not engine-strength
-- No persistence, networking, or cloud saves yet
-- No full economy/recruitment system in this phase
+- Logistics-first warfare model is in migration and not complete yet.
+- Siege timing, long sieges, and camp-to-city conversion are not finalized.
+- Commander threat penalties for cowardly/green leadership still need expansion.
+- AI is heuristic-based and still tuned for current rule sets.
+- Casus Belli remains slot-editable (AI or human per slot), while Eterna defaults to singleplayer adventure pacing.

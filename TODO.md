@@ -1,56 +1,77 @@
 # TODO - ChessWarss
 
-## Active Sprint - Alpha Full Game Loop
+## Doctrine (Approved)
 
-- [x] Replace static formation dialog with generated deployment plans (1-3 valid options, never forced to exactly 3).
-- [x] Add explicit pre-battle deployment phase where both sides place troops in legal zones.
-- [x] Ensure deployment phase disallows attacks/captures until battle officially starts.
-- [x] Rebalance General into a nerfed commander piece (king-like threat, tactical utility, no overpowering range).
-- [x] Add morale/hearts model per side and connect losses/captures/general safety to morale changes.
-- [x] Add limited "advance group" command to move multiple eligible units together.
-- [x] Add structured replay events and in-battle event panel (moves, captures, morale, commander XP, decisive events).
-- [x] Add setup controls for seed entry + rematch with same seed.
-- [x] Improve battle/world rendering performance for Linux desktop stability (reduced expensive repaints and heavy effects).
-- [x] Promote presentation/state names and copy from prototype wording to alpha wording across UI and files.
+- Campaign should feel like Total War-lite; battles remain chess-based.
+- Logistics are army-first, not abstract treasury-first recruitment.
+- Starvation in enemy territory is required.
+- Supply sources must include forage, plunder, and local requisition.
+- Settlement capture outcomes must include `Spare` and `Destroy` with different consequences.
+- Temporary camps should favor defenders on the battle board (traps first).
 
-## P0 - Alpha Hardening
+## Phase 1 - Logistics Core (Completed)
 
-- [x] Add full battle end-state handling for stalemate and no-legal-move edge cases.
-- [x] Add formation selection screen with up to 3 generated layouts per side.
-- [x] Enforce pawn-front placement constraints in formation generation.
-- [x] Add battle replay log panel (turn-by-turn with captures and General XP events).
-- [x] Add in-app seed input and explicit rematch with same seed.
+### Logistics and Starvation
+- [x] Add per-army supply tracking.
+- [x] Add starvation ladder: low supply -> fatigue -> morale pressure -> desertion risk.
+- [x] Show selected-army supply state in HUD.
 
-## P1 - Core Gameplay Expansion
+### Supply Sources
+- [x] Add local requisition from controlled settlements into nearby/occupying armies.
+- [x] Add forage income in the field.
+- [x] Add plunder gains from destructive capture outcomes.
+- [x] Add square-level food tile control (secure fields for ongoing yield).
+- [x] Add square-level pillage action (instant army supply, temporary tile exhaustion).
 
-- [ ] Add recruitment/challenge mechanic (tile control + challenge check).
-- [ ] Add morale system tied to General presence and material imbalance.
-- [ ] Add tactical terrain effects (cover, chokepoints, blocked lanes by preset).
-- [ ] Add army inspection panel from world map (piece counts + general skills).
-- [ ] Add fog-of-war option for hidden enemy stack composition.
+### Capture Outcomes
+- [x] Add capture policy per active player: `Spare` or `Destroy`.
+- [x] `Spare`: lower immediate gain, better long-term recovery.
+- [x] `Destroy`: higher immediate gain, stronger long-term settlement damage.
 
-## P1 - AI Quality
+### Conquered Food Scaling
+- [x] Add occupation-age effect (older occupation -> higher stability/yield).
+- [x] Add distance/connectivity effect (closer/connected territory feeds better).
 
-- [ ] Improve strategic AI with 1-ply lookahead and risk scoring.
-- [ ] Improve battle AI with lightweight minimax and piece-safety heuristics.
-- [ ] Add AI difficulty levels (easy/normal/hard) with deterministic behavior per seed.
+## Phase 2 - Levy and Siege Pressure (In Progress)
 
-## P2 - UX and Product
+### Levy Warfare (Experimental)
+- [x] Add settlement manpower/levy pools.
+- [x] Replace generic recruitment with levy-based reinforcement logic.
+- [x] Add settlement `Levy` action on owned settlements.
+- [x] Add forced levy intake on `Spare` captures.
+- [ ] Tune levy composition and recovery rates from playtests.
 
-- [ ] Add onboarding screen with concise rule explanation and controls.
-- [ ] Add visual indicators for passable/blocked strategic tiles and battle hazards.
-- [ ] Add settings screen (animation speed, AI delay, sound on/off).
-- [ ] Add pause menu with quick restart and return-to-setup actions.
+### Siege-Style Pressure (Chess-Compatible)
+- [ ] Add time-based siege pressure states tied to settlement control and battle triggers.
+- [ ] Keep resolution chess-based while making sieges costly over turns.
 
-## P2 - Engineering and Stability
+## Later - Phase 3
 
-- [ ] Increase domain test coverage for collision and survivor army reconstruction.
-- [ ] Add golden tests for world and battle UI states.
-- [ ] Split large screen state into controller/services for easier maintenance.
-- [ ] Add CI workflow for `flutter analyze` + `flutter test` on push/PR.
+### Territorial Development
+- [ ] Evaluate camp-to-city progression with simple, readable rules.
+- [ ] Make long-held conquered areas evolve into stronger food contributors.
 
-## Backlog / Optional
+### AI and UX
+- [ ] Teach AI to choose `Spare` vs `Destroy` based on supply pressure.
+- [x] Improve logistics explainability in HUD and logs.
+- [x] Replace long-scroll world sidebar with compact no-scroll contextual HUD flow.
+- [x] Make settlement/town selection useful even without active army selection.
+- [x] Add optional AI-vs-AI battle skip with instant auto-resolve.
+- [x] Add battle anti-stall turn-limit safeguard to prevent endless AI loops.
+- [ ] Expand cowardly/green-general threatened behavior (panic, hesitation, command loss).
+- [ ] Experiment with non-standard pawn/levy movement variants without breaking AI reliability.
 
-- [ ] Integrate external chess engine mode (Stockfish-based) behind a feature flag.
-- [ ] Add campaign mode with scenario progression.
-- [ ] Add local hot-seat save/load support.
+## Open Decisions (User-Guided)
+
+- [ ] Camp -> city conversion rule and timing.
+- [ ] Final siege win condition model.
+- [ ] Final levy composition and replenishment pacing.
+- [ ] Eterna adventure campaign progression layer (quests/events/victory arcs beyond total elimination).
+
+## Baseline Already In Place
+
+- [x] Campaign map + tactical battle loop.
+- [x] Settlement and camp entities with defensive context.
+- [x] Morale and command systems in battle.
+- [x] Save/load, onboarding, and settings.
+- [x] Turn/ownership clarity pass on board visuals.

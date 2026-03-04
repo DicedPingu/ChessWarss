@@ -8,12 +8,19 @@ class ArmyFactory {
 
   final double secondGeneralChance;
 
-  PlayerArmySet createArmySet({required int playerId, required Random random}) {
-    final armies = <ArmyDefinition>[
+  PlayerArmySet createArmySet({
+    required int playerId,
+    required Random random,
+    int armiesPerPlayer = 3,
+  }) {
+    final requestedArmies = armiesPerPlayer.clamp(2, 4).toInt();
+    final baseArmies = <ArmyDefinition>[
       _towerLineArmy(),
       _mobileVanguardArmy(),
       _balancedWildcardArmy(random),
+      _frontierHostArmy(random),
     ];
+    final armies = baseArmies.take(requestedArmies).toList();
 
     final withRareSecondGeneral = _rollSecondGeneral(armies, random);
 
@@ -35,6 +42,7 @@ class ArmyFactory {
         const ArmyUnit(
           type: PieceType.general,
           generalSkill: GeneralSkill.fieldCommander,
+          generalRank: GeneralRank.officer,
           title: 'Deputy General',
         ),
       );
@@ -58,6 +66,7 @@ class ArmyFactory {
         ArmyUnit(
           type: PieceType.general,
           generalSkill: GeneralSkill.fragileMarshal,
+          generalRank: GeneralRank.highKing,
           title: 'Nervous Marshal',
         ),
       ],
@@ -79,6 +88,7 @@ class ArmyFactory {
         ArmyUnit(
           type: PieceType.general,
           generalSkill: GeneralSkill.veteranCommander,
+          generalRank: GeneralRank.highKing,
           title: 'Veteran Commander',
         ),
       ],
@@ -103,7 +113,31 @@ class ArmyFactory {
         const ArmyUnit(
           type: PieceType.general,
           generalSkill: GeneralSkill.fieldCommander,
+          generalRank: GeneralRank.highKing,
           title: 'Rising Commander',
+        ),
+      ],
+    );
+  }
+
+  ArmyDefinition _frontierHostArmy(Random random) {
+    final flankType = random.nextBool() ? PieceType.knight : PieceType.bishop;
+    return ArmyDefinition(
+      id: 'frontier_host',
+      label: 'Frontier Host',
+      units: [
+        const ArmyUnit(type: PieceType.rook),
+        ArmyUnit(type: flankType),
+        const ArmyUnit(type: PieceType.pawn),
+        const ArmyUnit(type: PieceType.pawn),
+        const ArmyUnit(type: PieceType.pawn),
+        const ArmyUnit(type: PieceType.pawn),
+        const ArmyUnit(type: PieceType.pawn),
+        const ArmyUnit(
+          type: PieceType.general,
+          generalSkill: GeneralSkill.fieldCommander,
+          generalRank: GeneralRank.highKing,
+          title: 'Border Captain',
         ),
       ],
     );
