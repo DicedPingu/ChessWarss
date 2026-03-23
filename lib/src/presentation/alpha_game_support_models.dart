@@ -222,9 +222,72 @@ class _ArmyLogisticsRoundResult {
     required this.world,
     required this.supplyByStackId,
     required this.starvationByStackId,
+    required this.waterByStackId,
+    required this.thirstByStackId,
   });
 
   final WorldState world;
   final Map<String, int> supplyByStackId;
   final Map<String, int> starvationByStackId;
+  final Map<String, int> waterByStackId;
+  final Map<String, int> thirstByStackId;
+}
+
+enum _SupplyAnchorType { capital, settlement, camp, outpost }
+
+enum _SupplyLineState { secure, stretched, isolated }
+
+@immutable
+class _SupplyAnchor {
+  const _SupplyAnchor({
+    required this.position,
+    required this.type,
+    required this.label,
+  });
+
+  final BoardPosition position;
+  final _SupplyAnchorType type;
+  final String label;
+}
+
+@immutable
+class _SupplyLineReport {
+  const _SupplyLineReport({
+    required this.state,
+    required this.path,
+    required this.distance,
+    required this.dangerSteps,
+    required this.anchor,
+  });
+
+  final _SupplyLineState state;
+  final List<BoardPosition> path;
+  final int distance;
+  final int dangerSteps;
+  final _SupplyAnchor? anchor;
+
+  bool get hasLine => anchor != null && path.isNotEmpty;
+
+  String get stateLabel {
+    return switch (state) {
+      _SupplyLineState.secure => 'Secure line',
+      _SupplyLineState.stretched => 'Stretched line',
+      _SupplyLineState.isolated => 'Isolated',
+    };
+  }
+}
+
+@immutable
+class _TerritoryTileStatus {
+  const _TerritoryTileStatus({
+    required this.ownerId,
+    required this.depth,
+    required this.contested,
+    required this.frontline,
+  });
+
+  final int? ownerId;
+  final int depth;
+  final bool contested;
+  final bool frontline;
 }

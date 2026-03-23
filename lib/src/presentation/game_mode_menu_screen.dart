@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../application/save/save_repository.dart';
 import 'alpha_game_screen.dart';
@@ -100,56 +101,183 @@ class GameModeMenuScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('ChessWarss'),
         actions: [
-          TextButton.icon(
-            onPressed: () => _loadCampaignFromSlots(context),
-            icon: const Icon(Icons.folder_open_rounded),
-            label: const Text('Load Campaign'),
+          Tooltip(
+            message: 'Load a previously saved campaign',
+            child: TextButton.icon(
+              onPressed: () => _loadCampaignFromSlots(context),
+              icon: const Icon(Icons.folder_open_rounded),
+              label: const Text('Load Campaign'),
+            ),
           ),
         ],
       ),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF5EEDC), Color(0xFFE6D3AE)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF4E6C4), Color(0xFFE0C089), Color(0xFFC6945B)],
           ),
         ),
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 940),
+              constraints: const BoxConstraints(maxWidth: 1060),
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Choose Campaign',
-                      style: theme.textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Two tracks are live right now. Casus Belli is the active balance focus.',
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: ListView(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compact = constraints.maxHeight < 760;
+                    final useRow = constraints.maxWidth >= 920 && !compact;
+                    final hero = Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8EED7).withValues(alpha: 0.92),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: const Color(0xFF8A6336).withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _GameModeCard(
-                            mode: GameMode.eterna,
-                            saveRepository: saveRepository,
-                          ),
-                          const SizedBox(height: 12),
-                          _GameModeCard(
-                            mode: GameMode.casusBelli,
-                            saveRepository: saveRepository,
+                          Text(
+                            'Choose Campaign',
+                            style: theme.textTheme.headlineMedium,
+                          ).animate().fadeIn(duration: 360.ms),
+                          const SizedBox(height: 8),
+                          Text(
+                            'The first track is single-player conquest. Casus Belli is the local multiplayer proving ground. Both now lean harder into crossings, supply lines, raiding, and treasure brought back to strengthen the realm.',
+                            style: theme.textTheme.bodyLarge,
+                          ).animate().fadeIn(delay: 80.ms, duration: 360.ms),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: const [
+                              Chip(
+                                avatar: Icon(
+                                  Icons.account_balance_rounded,
+                                  size: 18,
+                                ),
+                                label: Text('Single-Player First'),
+                              ),
+                              Chip(
+                                avatar: Icon(Icons.groups_rounded, size: 18),
+                                label: Text('Local Multiplayer'),
+                              ),
+                              Chip(
+                                avatar: Icon(Icons.map_rounded, size: 18),
+                                label: Text('Fast Map Testing'),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    );
+
+                    if (!useRow) {
+                      return SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            hero,
+                            const SizedBox(height: 14),
+                            _GameModeCard(
+                                  mode: GameMode.eterna,
+                                  saveRepository: saveRepository,
+                                )
+                                .animate()
+                                .fadeIn(delay: 180.ms, duration: 380.ms)
+                                .slideY(begin: 0.06),
+                            const SizedBox(height: 12),
+                            _GameModeCard(
+                                  mode: GameMode.casusBelli,
+                                  saveRepository: saveRepository,
+                                )
+                                .animate()
+                                .fadeIn(delay: 260.ms, duration: 380.ms)
+                                .slideY(begin: 0.06),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        hero,
+                        const SizedBox(height: 14),
+                        Expanded(
+                          child: useRow
+                              ? Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child:
+                                          _GameModeCard(
+                                                mode: GameMode.eterna,
+                                                saveRepository: saveRepository,
+                                              )
+                                              .animate()
+                                              .fadeIn(
+                                                delay: 180.ms,
+                                                duration: 380.ms,
+                                              )
+                                              .slideX(begin: -0.06),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child:
+                                          _GameModeCard(
+                                                mode: GameMode.casusBelli,
+                                                saveRepository: saveRepository,
+                                              )
+                                              .animate()
+                                              .fadeIn(
+                                                delay: 260.ms,
+                                                duration: 380.ms,
+                                              )
+                                              .slideX(begin: 0.06),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  children: [
+                                    Expanded(
+                                      child:
+                                          _GameModeCard(
+                                                mode: GameMode.eterna,
+                                                saveRepository: saveRepository,
+                                              )
+                                              .animate()
+                                              .fadeIn(
+                                                delay: 180.ms,
+                                                duration: 380.ms,
+                                              )
+                                              .slideY(begin: 0.06),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Expanded(
+                                      child:
+                                          _GameModeCard(
+                                                mode: GameMode.casusBelli,
+                                                saveRepository: saveRepository,
+                                              )
+                                              .animate()
+                                              .fadeIn(
+                                                delay: 260.ms,
+                                                duration: 380.ms,
+                                              )
+                                              .slideY(begin: 0.06),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -169,27 +297,64 @@ class _GameModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isSolo = mode == GameMode.eterna;
+    final accent = isSolo ? const Color(0xFF8A2E22) : const Color(0xFF2F5B52);
+    final panel = isSolo
+        ? const [Color(0xFFF5E6D6), Color(0xFFE9C89A)]
+        : const [Color(0xFFE4EEE8), Color(0xFFC7D9CE)];
+
     return Card(
+      color: Colors.white.withValues(alpha: 0.92),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(mode.label, style: theme.textTheme.headlineSmall),
-                ),
-                if (mode == GameMode.casusBelli)
-                  const Chip(
-                    label: Text('Main Focus'),
-                    avatar: Icon(Icons.priority_high_rounded, size: 18),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: panel),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: accent.withValues(alpha: 0.22)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          mode.label,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: accent,
+                          ),
+                        ),
+                      ),
+                      Chip(
+                        label: Text(
+                          isSolo ? 'Single Player' : 'Local Multiplayer',
+                        ),
+                        avatar: Icon(
+                          isSolo
+                              ? Icons.account_balance_rounded
+                              : Icons.groups_rounded,
+                          size: 18,
+                        ),
+                      ),
+                    ],
                   ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    isSolo
+                        ? 'Build a war machine, cross rivers, seize rich settlements, and return spoils to your heartland before your rivals can choke the campaign.'
+                        : 'Settle grudges on the same machine with compact campaigns tuned for repeated redeploys, local rivalry, and quick map comparisons.',
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 12),
             Text(mode.menuSummary),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -206,12 +371,23 @@ class _GameModeCard extends StatelessWidget {
                 ),
                 Chip(
                   label: Text(
-                    mode.playerControlEditable ? 'Local MP + SP' : 'Solo-first',
+                    mode.playerControlEditable
+                        ? 'Hotseat-ready'
+                        : 'Campaign AI',
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
+            Text(
+              isSolo
+                  ? 'Best if you want Caesar-in-Gaul pressure: frontier expansion, supply discipline, and long-form conquest.'
+                  : 'Best if you want to test theaters, openings, and line behavior quickly with another person in the room.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: const Color(0xFF5E503E),
+              ),
+            ),
+            const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: () {
                 Navigator.of(context).push(
@@ -223,7 +399,11 @@ class _GameModeCard extends StatelessWidget {
                   ),
                 );
               },
-              icon: const Icon(Icons.play_arrow_rounded),
+              icon: Icon(
+                isSolo
+                    ? Icons.auto_stories_rounded
+                    : Icons.sports_martial_arts_rounded,
+              ),
               label: Text('Enter ${mode.label}'),
             ),
           ],

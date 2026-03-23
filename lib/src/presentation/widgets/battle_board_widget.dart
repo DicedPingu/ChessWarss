@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../domain/battle_state.dart';
 import '../../domain/board_position.dart';
@@ -44,26 +45,20 @@ class BattleBoardWidget extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: reduceEffects
-            ? const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFF2E7CE), Color(0xFFE5D5B7)],
-              )
-            : const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFF7EEDB), Color(0xFFE5D5B7)],
-              ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF8A7652)),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF4E4BE), Color(0xFFDDC08A), Color(0xFFC49B63)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF7A5934), width: 1.4),
         boxShadow: reduceEffects
             ? const []
             : const [
                 BoxShadow(
-                  blurRadius: 14,
-                  offset: Offset(0, 6),
-                  color: Color(0x33000000),
+                  blurRadius: 18,
+                  offset: Offset(0, 8),
+                  color: Color(0x2A000000),
                 ),
               ],
       ),
@@ -75,6 +70,19 @@ class BattleBoardWidget extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             child: Stack(
               children: [
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _BattlefieldTheatrePainter(
+                        rows: state.rows,
+                        cols: state.cols,
+                        southColor: playerColor(state.southPlayerId),
+                        northColor: playerColor(state.northPlayerId),
+                        soften: reduceEffects,
+                      ),
+                    ),
+                  ),
+                ),
                 GridView.builder(
                   primary: false,
                   physics: const NeverScrollableScrollPhysics(),
@@ -92,7 +100,6 @@ class BattleBoardWidget extends StatelessWidget {
                     final piece = pieceByPosition[position];
                     final isBlocked = state.isBlocked(position);
 
-                    final isDarkSquare = (row + col).isOdd;
                     final isLegalMove = legalMoves.contains(position);
                     final isSelected =
                         piece != null && piece.id == selectedPieceId;
@@ -100,7 +107,8 @@ class BattleBoardWidget extends StatelessWidget {
                         piece != null && piece.ownerId == state.activePlayer;
                     final overlayMark = overlayMarks[position];
                     final baseColor = _squareColor(
-                      isDarkSquare: isDarkSquare,
+                      row: row,
+                      col: col,
                       isBlocked: isBlocked,
                       isLegalMove: isLegalMove,
                       isSelected: isSelected,
@@ -198,20 +206,41 @@ class BattleBoardWidget extends StatelessWidget {
                                   ),
                                   shape: BoxShape.circle,
                                 ),
+                              ).animate().scale(
+                                duration: 200.ms,
+                                curve: Curves.easeOutBack,
                               ),
-                            if (piece != null) _pieceGlyph(piece),
+                            if (piece != null)
+                              Tooltip(
+                                message: _pieceDescription(piece),
+                                child: _pieceGlyph(piece)
+                                    .animate(
+                                      key: ValueKey(
+                                        '${piece.id}-${piece.position}',
+                                      ),
+                                    )
+                                    .scale(
+                                      duration: 300.ms,
+                                      curve: Curves.elasticOut,
+                                    )
+                                    .fadeIn(duration: 200.ms),
+                              ),
                             if (isActiveTurnPiece)
                               Positioned(
-                                top: 1,
-                                right: 1,
-                                child: Icon(
-                                  Icons.flash_on_rounded,
-                                  size: 10,
-                                  color: activePieceAccent!.withValues(
-                                    alpha: 0.96,
-                                  ),
-                                ),
-                              ),
+                                    top: 1,
+                                    right: 1,
+                                    child: Icon(
+                                      Icons.flash_on_rounded,
+                                      size: 10,
+                                      color: activePieceAccent!.withValues(
+                                        alpha: 0.96,
+                                      ),
+                                    ),
+                                  )
+                                  .animate(
+                                    onPlay: (c) => c.repeat(reverse: true),
+                                  )
+                                  .fade(duration: 600.ms, begin: 0.5, end: 1.0),
                             if (overlayMark != null && piece == null)
                               Icon(
                                 overlayMark == BattleOverlayMark.loss
@@ -261,7 +290,7 @@ class BattleBoardWidget extends StatelessWidget {
                         ),
                       ),
                     ),
-                  ),
+                  ).animate().fadeIn(duration: 300.ms),
               ],
             ),
           ),
@@ -310,7 +339,8 @@ class BattleBoardWidget extends StatelessWidget {
   }
 
   Color _squareColor({
-    required bool isDarkSquare,
+    required int row,
+    required int col,
     required bool isBlocked,
     required bool isLegalMove,
     required bool isSelected,
@@ -324,11 +354,45 @@ class BattleBoardWidget extends StatelessWidget {
     if (isLegalMove) {
       return const Color(0xFFAED184);
     }
-    return isDarkSquare ? const Color(0xFFC89660) : const Color(0xFFEED9B8);
+    final distanceToCenter = (row - ((state.rows - 1) / 2)).abs();
+    final clashBand = distanceToCenter <= 1.0;
+    final flankBand = col == 0 || col == state.cols - 1;
+    var base = clashBand ? const Color(0xFFD0A06A) : const Color(0xFFE9D5AF);
+    if ((row + col).isOdd) {
+      base = Color.alphaBlend(const Color(0x11A36E3E), base);
+    }
+    if (flankBand) {
+      base = Color.alphaBlend(const Color(0x114A3A28), base);
+    }
+    return base;
   }
 
   Color _overlayColor(BattleOverlayMark mark) {
     return _overlayColorForMark(mark);
+  }
+
+  String _pieceDescription(BattlePiece piece) {
+    final type = piece.type.name.toUpperCase();
+    final behavior = switch (piece.type) {
+      PieceType.pawn =>
+        'Pawn infantry: Holds the line, advances straight, captures on the forward diagonal.',
+      PieceType.knight =>
+        'Knight cavalry: Leaps in L-shape to flank or break through.',
+      PieceType.bishop =>
+        'Bishop skirmishers: Sweep diagonals and pressure open lanes.',
+      PieceType.rook =>
+        'Rook heavy line: Moves on files and ranks as the hard point of the battle line.',
+      PieceType.general =>
+        'General command: Leads the army, steadies morale, and anchors the formation.',
+    };
+
+    if (piece.type == PieceType.general) {
+      final rank = piece.resolvedGeneralRank.name;
+      final skill = piece.generalSkill?.publicLabel ?? 'Unskilled';
+      return '$type ($rank)\nSkill: $skill\n$behavior';
+    }
+
+    return '$type\n$behavior';
   }
 
   Widget _pieceGlyph(BattlePiece piece) {
@@ -338,51 +402,44 @@ class BattleBoardWidget extends StatelessWidget {
     return FittedBox(
       fit: BoxFit.scaleDown,
       child: SizedBox(
-        width: 36,
-        height: 36,
+        width: 44,
+        height: 44,
         child: Stack(
           children: [
             Positioned.fill(
-              child: Align(
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.16),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: color.withValues(alpha: 0.62),
-                      width: 1.1,
-                    ),
-                  ),
-                ),
+              child: CustomPaint(
+                painter: _PieceStandPainter(piece: piece, color: color),
               ),
             ),
             Positioned(
-              left: 1.3,
-              top: 1.3,
+              left: 6,
+              top: 4,
               child: SvgPicture.asset(
                 asset,
-                width: 30,
-                height: 30,
+                width: 28,
+                height: 28,
                 colorFilter: const ColorFilter.mode(
                   Color(0x55000000),
                   BlendMode.srcIn,
                 ),
               ),
             ),
-            SvgPicture.asset(
-              asset,
-              width: 30,
-              height: 30,
-              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            Positioned(
+              left: 4.8,
+              top: 2.8,
+              child: SvgPicture.asset(
+                asset,
+                width: 28,
+                height: 28,
+                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+              ),
             ),
             Positioned(
-              left: -1,
-              top: -1,
+              left: 0,
+              top: 0,
               child: Container(
-                width: 13,
-                height: 13,
+                width: 15,
+                height: 15,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: color,
@@ -403,11 +460,47 @@ class BattleBoardWidget extends StatelessWidget {
                 ),
               ),
             ),
+            Positioned(
+              left: 5,
+              right: 5,
+              bottom: 1,
+              child: Container(
+                height: 11,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7E9C5).withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                    color: color.withValues(alpha: 0.45),
+                    width: 0.8,
+                  ),
+                ),
+                child: Text(
+                  _pieceRoleCode(piece.type),
+                  style: TextStyle(
+                    fontSize: 7.6,
+                    height: 1,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF352516),
+                  ),
+                ),
+              ),
+            ),
             if (piece.type == PieceType.general) _generalSkillBadge(piece),
           ],
         ),
       ),
     );
+  }
+
+  String _pieceRoleCode(PieceType type) {
+    return switch (type) {
+      PieceType.pawn => 'LINE',
+      PieceType.rook => 'ANVIL',
+      PieceType.knight => 'WING',
+      PieceType.bishop => 'SKIRM',
+      PieceType.general => 'CMD',
+    };
   }
 
   Widget _generalSkillBadge(BattlePiece piece) {
@@ -459,6 +552,221 @@ class BattleBoardWidget extends StatelessWidget {
       case PieceType.general:
         return 'assets/pieces/king.svg';
     }
+  }
+}
+
+class _BattlefieldTheatrePainter extends CustomPainter {
+  const _BattlefieldTheatrePainter({
+    required this.rows,
+    required this.cols,
+    required this.southColor,
+    required this.northColor,
+    required this.soften,
+  });
+
+  final int rows;
+  final int cols;
+  final Color southColor;
+  final Color northColor;
+  final bool soften;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (rows <= 0 || cols <= 0) {
+      return;
+    }
+
+    final cellWidth = size.width / cols;
+    final centerBand = Rect.fromLTWH(
+      0,
+      size.height * 0.38,
+      size.width,
+      size.height * 0.24,
+    );
+
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            northColor.withValues(alpha: 0.12),
+            const Color(0xFFE5C78E).withValues(alpha: 0.35),
+            southColor.withValues(alpha: 0.12),
+          ],
+        ).createShader(Offset.zero & size),
+    );
+    canvas.drawRect(
+      centerBand,
+      Paint()..color = const Color(0xFF8E6231).withValues(alpha: 0.12),
+    );
+
+    final lanePaint = Paint()
+      ..color = const Color(0xFF5D4528).withValues(alpha: 0.12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    for (var col = 1; col < cols; col++) {
+      final x = col * cellWidth;
+      canvas.drawLine(
+        Offset(x, size.height * 0.12),
+        Offset(x, size.height * 0.88),
+        lanePaint,
+      );
+    }
+
+    final frontPaint = Paint()
+      ..color = const Color(0xFF5A3217).withValues(alpha: soften ? 0.18 : 0.28)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = soften ? 1.4 : 2.2;
+    final upperFront = Path()
+      ..moveTo(cellWidth * 0.5, size.height * 0.42)
+      ..quadraticBezierTo(
+        size.width * 0.5,
+        size.height * 0.36,
+        size.width - (cellWidth * 0.5),
+        size.height * 0.42,
+      );
+    final lowerFront = Path()
+      ..moveTo(cellWidth * 0.5, size.height * 0.58)
+      ..quadraticBezierTo(
+        size.width * 0.5,
+        size.height * 0.64,
+        size.width - (cellWidth * 0.5),
+        size.height * 0.58,
+      );
+    canvas.drawPath(upperFront, frontPaint);
+    canvas.drawPath(lowerFront, frontPaint);
+
+    final wingPaint = Paint()
+      ..color = const Color(0xFF8D6A39).withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    canvas.drawArc(
+      Rect.fromLTWH(
+        -cellWidth,
+        size.height * 0.18,
+        cellWidth * 2.2,
+        size.height * 0.46,
+      ),
+      -0.6,
+      1.3,
+      false,
+      wingPaint,
+    );
+    canvas.drawArc(
+      Rect.fromLTWH(
+        size.width - (cellWidth * 1.2),
+        size.height * 0.36,
+        cellWidth * 2.2,
+        size.height * 0.46,
+      ),
+      2.5,
+      1.3,
+      false,
+      wingPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _BattlefieldTheatrePainter oldDelegate) {
+    return oldDelegate.rows != rows ||
+        oldDelegate.cols != cols ||
+        oldDelegate.soften != soften ||
+        oldDelegate.southColor != southColor ||
+        oldDelegate.northColor != northColor;
+  }
+}
+
+class _PieceStandPainter extends CustomPainter {
+  const _PieceStandPainter({required this.piece, required this.color});
+
+  final BattlePiece piece;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final plateRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(4, size.height * 0.42, size.width - 8, size.height * 0.38),
+      const Radius.circular(10),
+    );
+    final platePaint = Paint()
+      ..color = const Color(0xFFF7E5C1).withValues(alpha: 0.94);
+    canvas.drawRRect(plateRect, platePaint);
+
+    final outline = Paint()
+      ..color = color.withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1;
+    canvas.drawRRect(plateRect, outline);
+
+    final accent = Paint()
+      ..color = color.withValues(alpha: 0.78)
+      ..style = PaintingStyle.fill;
+    final ghost = Paint()
+      ..color = color.withValues(alpha: 0.18)
+      ..style = PaintingStyle.fill;
+    final centerY = size.height * 0.57;
+
+    switch (piece.type) {
+      case PieceType.pawn:
+        for (var i = 0; i < 3; i++) {
+          final left = 8 + (i * 9.5);
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromLTWH(left, centerY, 7, 8),
+              const Radius.circular(2),
+            ),
+            i == 1 ? accent : ghost,
+          );
+        }
+      case PieceType.rook:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(8, centerY - 1, size.width - 16, 10),
+            const Radius.circular(3),
+          ),
+          accent,
+        );
+      case PieceType.knight:
+        final path = Path()
+          ..moveTo(9, centerY + 8)
+          ..lineTo(size.width - 10, centerY + 4)
+          ..lineTo(13, centerY - 3)
+          ..close();
+        canvas.drawPath(path, accent);
+      case PieceType.bishop:
+        for (var i = 0; i < 3; i++) {
+          final offset = 8 + (i * 10.0);
+          canvas.drawCircle(Offset(offset + 4, centerY + 5), 3.4, ghost);
+          canvas.drawCircle(
+            Offset(offset + 7, centerY + 1.2),
+            3.0,
+            i == 1 ? accent : ghost,
+          );
+        }
+      case PieceType.general:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(9, centerY + 1, size.width - 18, 8),
+            const Radius.circular(3),
+          ),
+          ghost,
+        );
+        final banner = Path()
+          ..moveTo(size.width * 0.28, centerY + 7)
+          ..lineTo(size.width * 0.28, centerY - 7)
+          ..lineTo(size.width * 0.6, centerY - 5)
+          ..lineTo(size.width * 0.5, centerY + 1)
+          ..lineTo(size.width * 0.6, centerY + 5)
+          ..close();
+        canvas.drawPath(banner, accent);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PieceStandPainter oldDelegate) {
+    return oldDelegate.piece != piece || oldDelegate.color != color;
   }
 }
 

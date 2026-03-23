@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../application/save/local_json_save_repository.dart';
 import '../application/save/save_models.dart';
@@ -18,6 +19,7 @@ import '../domain/piece.dart';
 import '../domain/world.dart';
 import '../domain/world_generator.dart';
 import 'game_mode.dart';
+import 'general_sandbox_screen.dart';
 import 'player_colors.dart';
 import 'widgets/battle_board_widget.dart';
 
@@ -95,6 +97,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
   bool _backConfirmOpen = false;
   Map<String, int> _stackSupplyById = const <String, int>{};
   Map<String, int> _stackStarvationById = const <String, int>{};
+  Map<String, int> _stackWaterById = const <String, int>{};
+  Map<String, int> _stackThirstById = const <String, int>{};
   Map<int, _CapturePolicy> _capturePolicyByPlayer =
       const <int, _CapturePolicy>{};
   Map<BoardPosition, int> _foodTileOwnerByPosition = <BoardPosition, int>{};
@@ -103,6 +107,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
   static const int _maxArmyUnitsPerStack = 14;
   static const int _battleTurnLimit = 140;
   static const double _aiMoveTimeScale = 2 / 3;
+
+  double _riverAnimValue = 0.0;
+  Timer? _riverTimer;
 
   Duration _scaledDelay(int baseMs) {
     final speed = _animationSpeed <= 0 ? 1.0 : _animationSpeed;
@@ -121,64 +128,55 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
 
   static const List<_FieldManualSection> _fieldManualSections = [
     _FieldManualSection(
-      icon: Icons.map_rounded,
-      title: 'Campaign Loop',
-      summary: 'Move, spend command, clash, and survive the longest.',
+      icon: Icons.auto_awesome_rounded,
+      title: 'New Player Quickstart',
+      summary: 'ChessWarss is a tactical simulation, not standard chess.',
       points: [
-        'You win by removing rival factions from the map.',
-        'Command Points drive actions each round, food sustains aggression.',
-        'When stacks collide, a tactical battle decides survivors.',
+        'Move army stacks on the World Map to capture settlements.',
+        'When you collide with an enemy, you can Engage or Withdraw.',
+        'Battle is decided by tactics and morale, not just piece count.',
+        'Infantry (Pawns) are your line: they advance forward, strike diagonally, and sidestep only if blocked.',
       ],
     ),
     _FieldManualSection(
-      icon: Icons.account_balance_rounded,
-      title: 'Settlements',
-      summary: 'Villages feed, towns fund, castles anchor defense.',
+      icon: Icons.terrain_rounded,
+      title: 'Geography & Logistics',
+      summary: 'Terrain shapes your strategy.',
       points: [
-        'Settlements track tax, supply, garrison, unrest, and culture.',
-        'Use Tax, Forage, Garrison, Levy, or Study to shape pressure and command tempo.',
-        'Defenders can gain narrower lanes, morale shields, and ditch traps.',
+        'Riverlands, Mountain Passes, and Ancient Ruins dictate chokepoints.',
+        'Rivers are dangerous—cross only at Bridges or Fords.',
+        'Supply and Water are critical—armies starve if cut off from home.',
       ],
     ),
     _FieldManualSection(
-      icon: Icons.fort_rounded,
-      title: 'Camps',
-      summary: 'Temporary military posture, not permanent infrastructure.',
+      icon: Icons.military_tech_rounded,
+      title: 'Realistic Combat',
+      summary: 'Units behave like disciplined soldiers.',
       points: [
-        'Establish camps to project supply, fortification, or raiding pressure.',
-        'Shift posture between Supply, Fortified, and Raiding as the front changes.',
-        'Camps expire over time and can be broken or overrun.',
+        'PAWNS: Move forward, capture diagonally, and sidestep only when the file ahead is blocked.',
+        'CHARGE: SURGE your mobile units forward for a momentum bonus.',
+        'DEFEND: Dig in to become harder to capture (but you cannot move).',
+        'ADVANCE: A slow, coordinated push to close the gap.',
       ],
     ),
     _FieldManualSection(
       icon: Icons.shield_rounded,
-      title: 'Doctrine and Formations',
-      summary: 'Formation options depend on army mix and command quality.',
+      title: 'Battle Doctrine',
+      summary: 'Your opening formation matters.',
       points: [
-        'Each side gets legal doctrine options from its own army composition.',
-        'Enemy doctrine choice stays hidden during selection.',
-        'Keeping commanders screened by nearby troops is critical.',
+        'Choose a Doctrine (formation) based on your army mix.',
+        'Enemy doctrine stays hidden until the lines clash.',
+        'Commanders (Generals) anchor your line—keep them screened.',
       ],
     ),
     _FieldManualSection(
       icon: Icons.flag_rounded,
-      title: 'Morale and Rout',
-      summary: 'Battles can break before full elimination.',
+      title: 'Morale & Victory',
+      summary: 'Break their spirit to win.',
       points: [
-        'Morale shifts from losses, pressure, and command quality.',
-        'Low morale can trigger rout pressure, retreat, or desertion.',
-        'A collapsed side can lose without all pieces being captured.',
-      ],
-    ),
-    _FieldManualSection(
-      icon: Icons.workspace_premium_rounded,
-      title: 'Generals',
-      summary: 'Command anchors that unlock stronger actions.',
-      points: [
-        'General rank and skill affect doctrine access and command surges.',
-        'Trait families: Stability, Aggression, Momentum, and Volatility.',
-        'High Command is a one-time coordinated push at key moments.',
-        'Exposed generals are high-value targets and can collapse cohesion.',
+        'Losing high-value pieces or being flanked drops morale.',
+        'A side with "Collapsed" morale loses immediately.',
+        'Eliminating the enemy commander often ends the fight.',
       ],
     ),
   ];
@@ -186,6 +184,13 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
   @override
   void initState() {
     super.initState();
+    _riverTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      if (mounted && _phase == _GamePhase.world) {
+        setState(() {
+          _riverAnimValue += 0.02;
+        });
+      }
+    });
     _applyModeDefaults();
     _mapSize = _defaultMapSizeForPlayers(_playerCount);
     _armiesPerPlayer = _armiesPerPlayer
@@ -262,6 +267,49 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     );
   }
 
+  Map<int, String> _capturePolicyStorageMap() {
+    return <int, String>{
+      for (final entry in _capturePolicyByPlayer.entries)
+        entry.key: entry.value.name,
+    };
+  }
+
+  Map<int, _CapturePolicy> _capturePolicyMapFromStorage(
+    Map<int, String> source,
+  ) {
+    return <int, _CapturePolicy>{
+      for (final entry in source.entries)
+        entry.key: switch (entry.value) {
+          'destroy' => _CapturePolicy.destroy,
+          _ => _CapturePolicy.spare,
+        },
+    };
+  }
+
+  Map<String, int> _positionIntStorageMap(Map<BoardPosition, int> source) {
+    return <String, int>{
+      for (final entry in source.entries)
+        '${entry.key.row},${entry.key.col}': entry.value,
+    };
+  }
+
+  Map<BoardPosition, int> _storageMapToPositionInt(Map<String, int> source) {
+    final result = <BoardPosition, int>{};
+    for (final entry in source.entries) {
+      final parts = entry.key.split(',');
+      if (parts.length != 2) {
+        continue;
+      }
+      final row = int.tryParse(parts[0]);
+      final col = int.tryParse(parts[1]);
+      if (row == null || col == null) {
+        continue;
+      }
+      result[BoardPosition(row, col)] = entry.value;
+    }
+    return result;
+  }
+
   GameSaveV1 _buildSaveSnapshot() {
     return GameSaveV1(
       schemaVersion: gameSaveSchemaVersion,
@@ -282,6 +330,13 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       forcedMarchMode: _forcedMarchMode,
       selectedBattlePieceId: _selectedBattlePieceId,
       campaignOnboardingSeen: _campaignOnboardingSeen,
+      stackSupplyById: _stackSupplyById,
+      stackStarvationById: _stackStarvationById,
+      stackWaterById: _stackWaterById,
+      stackThirstById: _stackThirstById,
+      capturePolicyByPlayer: _capturePolicyStorageMap(),
+      foodTileOwnerByPosition: _positionIntStorageMap(_foodTileOwnerByPosition),
+      pillagedTileUntilRound: _positionIntStorageMap(_pillagedTileUntilRound),
       settings: _settingsSnapshot(),
     );
   }
@@ -316,15 +371,34 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         ? (
             supplyById: const <String, int>{},
             starvationById: const <String, int>{},
+            waterById: const <String, int>{},
+            thirstById: const <String, int>{},
           )
         : _reconcileStackLogistics(
             world,
-            supplySource: const {},
-            starvationSource: const {},
+            supplySource: save.stackSupplyById,
+            starvationSource: save.stackStarvationById,
+            waterSource: save.stackWaterById,
+            thirstSource: save.stackThirstById,
           );
     final capturePolicies = world == null
         ? const <int, _CapturePolicy>{}
-        : _reconcileCapturePolicies(world, source: const {});
+        : _reconcileCapturePolicies(
+            world,
+            source: _capturePolicyMapFromStorage(save.capturePolicyByPlayer),
+          );
+    final restoredFoodControl = world == null
+        ? const <BoardPosition, int>{}
+        : _sanitizeFoodTileControlMap(
+            world,
+            source: _storageMapToPositionInt(save.foodTileOwnerByPosition),
+          );
+    final restoredPillaged = world == null
+        ? const <BoardPosition, int>{}
+        : _sanitizePillagedTileMap(
+            world,
+            source: _storageMapToPositionInt(save.pillagedTileUntilRound),
+          );
 
     setState(() {
       _phase = nextPhase;
@@ -355,11 +429,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       _lastEnemyWorldMove = null;
       _stackSupplyById = reconciledLogistics.supplyById;
       _stackStarvationById = reconciledLogistics.starvationById;
+      _stackWaterById = reconciledLogistics.waterById;
+      _stackThirstById = reconciledLogistics.thirstById;
       _capturePolicyByPlayer = capturePolicies;
-      _foodTileOwnerByPosition = world == null
-          ? const <BoardPosition, int>{}
-          : _initialFoodTileControl(world);
-      _pillagedTileUntilRound = const <BoardPosition, int>{};
+      _foodTileOwnerByPosition = restoredFoodControl;
+      _pillagedTileUntilRound = restoredPillaged;
       _matchOverSummary = null;
       _matchOverBannerVisible = false;
       _matchOverPopupShown = false;
@@ -414,12 +488,13 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           content: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: 560, maxHeight: maxHeight),
             child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Use this as your first-turn checklist. Everything below is actionable in the world sidebar.',
+                    'Use this as your first-turn checklist. The campaign is easiest to read if you think in three things: crossings, camps, and local logistics.',
                   ),
                   const SizedBox(height: 10),
                   const Text(
@@ -427,11 +502,19 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const Text(
-                    'Spend command points each round to move, force march, and manage settlements and camps. Food sustains tempo and prevents fatigue spirals.',
+                    'Spend command points each round to move, force march, and manage settlements and camps. Food sustains tempo, but water is the urgent short-term limit.',
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    '2) Settlements',
+                    '2) Rivers and Water',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const Text(
+                    'Rivers run between tiles. Bridges and fords are the safe crossings. Armies that camp on a river line or in a settlement keep water steady before battle.',
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '3) Settlements',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const Text(
@@ -439,15 +522,15 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    '3) Camps and Outposts',
+                    '4) Camps and Outposts',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const Text(
-                    'Camps are temporary posture tools: Supply, Fortified, Raiding. Consolidate when front lines need lasting pressure support.',
+                    'Camps are temporary posture tools: Supply, Fortified, Raiding. Riverbank camps make the best pre-battle staging points and outposts hold crossings longer.',
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    '4) Battles and Morale',
+                    '5) Battles and Morale',
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const Text(
@@ -844,6 +927,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           content: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: 460, maxHeight: maxHeight),
             child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -884,6 +968,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                     leading: const Icon(Icons.settings_rounded),
                     title: const Text('Settings'),
                     onTap: () => Navigator.of(dialogContext).pop('settings'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.bug_report_rounded),
+                    title: const Text('War Lab / Debug'),
+                    onTap: () => Navigator.of(dialogContext).pop('war-lab'),
                   ),
                   if (canShowOnboarding)
                     ListTile(
@@ -938,6 +1027,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       case 'settings':
         await _showSettingsDialog();
         break;
+      case 'war-lab':
+        await _showWarLabSheet();
+        break;
       case 'onboarding':
         await _showCampaignOnboarding(markSeen: false);
         break;
@@ -958,6 +1050,203 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       default:
         break;
     }
+  }
+
+  void _cycleMapPreset(int delta) {
+    final presets = MapPreset.values;
+    final currentIndex = presets.indexOf(_mapPreset);
+    final nextIndex = (currentIndex + delta) % presets.length;
+    final resolvedIndex = nextIndex < 0
+        ? nextIndex + presets.length
+        : nextIndex;
+    setState(() {
+      _mapPreset = presets[resolvedIndex];
+      _status = 'Map preset set to ${_presetLabel(_mapPreset)}.';
+    });
+  }
+
+  void _grantActivePlayerResources({int food = 0, int treasury = 0}) {
+    final world = _world;
+    if (world == null) {
+      return;
+    }
+    final foodByPlayer = <int, int>{...world.foodByPlayer};
+    final treasuryByPlayer = <int, int>{...world.treasuryByPlayer};
+    foodByPlayer[world.activePlayerId] =
+        ((foodByPlayer[world.activePlayerId] ?? 0) + food).clamp(0, 99).toInt();
+    treasuryByPlayer[world.activePlayerId] =
+        ((treasuryByPlayer[world.activePlayerId] ?? 0) + treasury)
+            .clamp(0, 999)
+            .toInt();
+    setState(() {
+      _world = world.copyWith(
+        foodByPlayer: foodByPlayer,
+        treasuryByPlayer: treasuryByPlayer,
+      );
+      _status =
+          'War lab: granted P${world.activePlayerId + 1} +$food food and +$treasury coin.';
+    });
+  }
+
+  void _refillSelectedArmyLogistics() {
+    final world = _world;
+    final selectedStackId = _selectedStackId;
+    if (world == null || selectedStackId == null) {
+      return;
+    }
+    final stack = world.stackById(selectedStackId);
+    if (stack == null) {
+      return;
+    }
+    setState(() {
+      _stackSupplyById = <String, int>{..._stackSupplyById, selectedStackId: 8};
+      _stackWaterById = <String, int>{..._stackWaterById, selectedStackId: 6};
+      _stackStarvationById = <String, int>{
+        ..._stackStarvationById,
+        selectedStackId: 0,
+      };
+      _stackThirstById = <String, int>{..._stackThirstById, selectedStackId: 0};
+      _status = 'War lab: ${stack.id} refilled to full supply and water.';
+    });
+  }
+
+  Future<void> _showWarLabSheet() async {
+    if (!mounted) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final inCampaign = _phase != _GamePhase.setup;
+            final selectedStack = _world == null || _selectedStackId == null
+                ? null
+                : _world!.stackById(_selectedStackId!);
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'War Lab / Debug',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Quick map testing and cheat hooks. No scrolling, no hunting.',
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final preset in MapPreset.values)
+                          ChoiceChip(
+                            label: Text(_presetLabel(preset)),
+                            selected: _mapPreset == preset,
+                            onSelected: (_) {
+                              setState(() {
+                                _mapPreset = preset;
+                                _status =
+                                    'Map preset set to ${_presetLabel(preset)}.';
+                              });
+                              setSheetState(() {});
+                            },
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _startMatch();
+                          },
+                          icon: const Icon(Icons.casino_rounded),
+                          label: const Text('Reroll Seed'),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: () {
+                            _cycleMapPreset(1);
+                            setSheetState(() {});
+                            if (inCampaign) {
+                              Navigator.of(context).pop();
+                              _startMatch();
+                            }
+                          },
+                          icon: const Icon(Icons.map_rounded),
+                          label: Text(
+                            inCampaign ? 'Next Map + Restart' : 'Next Map',
+                          ),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const GeneralSandboxScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.science_rounded),
+                          label: const Text('Battle Sandbox'),
+                        ),
+                      ],
+                    ),
+                    if (inCampaign) ...[
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Live Cheats',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: () {
+                              _grantActivePlayerResources(food: 4, treasury: 4);
+                              setSheetState(() {});
+                            },
+                            icon: const Icon(Icons.attach_money_rounded),
+                            label: const Text('+4 Food / +4 Coin'),
+                          ),
+                          FilledButton.tonalIcon(
+                            onPressed: selectedStack == null
+                                ? null
+                                : () {
+                                    _refillSelectedArmyLogistics();
+                                    setSheetState(() {});
+                                  },
+                            icon: const Icon(Icons.local_shipping_rounded),
+                            label: Text(
+                              selectedStack == null
+                                  ? 'Select Army To Refill'
+                                  : 'Refill ${selectedStack.label}',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   String _phaseDisplayLabel() {
@@ -1076,6 +1365,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       world,
       supplySource: const {},
       starvationSource: const {},
+      waterSource: const {},
+      thirstSource: const {},
     );
     final capturePolicies = _reconcileCapturePolicies(world, source: const {});
     _battleOverlayTimer?.cancel();
@@ -1099,6 +1390,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       _lastEnemyWorldMove = null;
       _stackSupplyById = reconciledLogistics.supplyById;
       _stackStarvationById = reconciledLogistics.starvationById;
+      _stackWaterById = reconciledLogistics.waterById;
+      _stackThirstById = reconciledLogistics.thirstById;
       _capturePolicyByPlayer = capturePolicies;
       _foodTileOwnerByPosition = _initialFoodTileControl(world);
       _pillagedTileUntilRound = const <BoardPosition, int>{};
@@ -1119,6 +1412,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
 
   @override
   void dispose() {
+    _riverTimer?.cancel();
     _battleOverlayTimer?.cancel();
     super.dispose();
   }
@@ -1141,6 +1435,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       _lastEnemyWorldMove = null;
       _stackSupplyById = const <String, int>{};
       _stackStarvationById = const <String, int>{};
+      _stackWaterById = const <String, int>{};
+      _stackThirstById = const <String, int>{};
       _capturePolicyByPlayer = const <int, _CapturePolicy>{};
       _foodTileOwnerByPosition = const <BoardPosition, int>{};
       _pillagedTileUntilRound = const <BoardPosition, int>{};
@@ -1543,24 +1839,52 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     return 3;
   }
 
-  ({Map<String, int> supplyById, Map<String, int> starvationById})
+  int _initialWaterForStack(WorldState world, ArmyStack stack) {
+    if (_hasReliableWaterSource(world, stack.position)) {
+      return 4;
+    }
+    return 3;
+  }
+
+  ({
+    Map<String, int> supplyById,
+    Map<String, int> starvationById,
+    Map<String, int> waterById,
+    Map<String, int> thirstById,
+  })
   _reconcileStackLogistics(
     WorldState world, {
     Map<String, int>? supplySource,
     Map<String, int>? starvationSource,
+    Map<String, int>? waterSource,
+    Map<String, int>? thirstSource,
   }) {
     final sourceSupply = supplySource ?? _stackSupplyById;
     final sourceStarvation = starvationSource ?? _stackStarvationById;
+    final sourceWater = waterSource ?? _stackWaterById;
+    final sourceThirst = thirstSource ?? _stackThirstById;
     final supply = <String, int>{};
     final starvation = <String, int>{};
+    final water = <String, int>{};
+    final thirst = <String, int>{};
     for (final stack in world.stacks) {
       supply[stack.id] =
           (sourceSupply[stack.id] ?? _initialSupplyForStack(world, stack))
               .clamp(0, 8)
               .toInt();
       starvation[stack.id] = (sourceStarvation[stack.id] ?? 0).clamp(0, 6);
+      water[stack.id] =
+          (sourceWater[stack.id] ?? _initialWaterForStack(world, stack))
+              .clamp(0, 6)
+              .toInt();
+      thirst[stack.id] = (sourceThirst[stack.id] ?? 0).clamp(0, 6);
     }
-    return (supplyById: supply, starvationById: starvation);
+    return (
+      supplyById: supply,
+      starvationById: starvation,
+      waterById: water,
+      thirstById: thirst,
+    );
   }
 
   Map<int, _CapturePolicy> _reconcileCapturePolicies(
@@ -1649,6 +1973,14 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     return _stackStarvationById[stackId] ?? 0;
   }
 
+  int _stackWater(String stackId) {
+    return _stackWaterById[stackId] ?? 0;
+  }
+
+  int _stackThirst(String stackId) {
+    return _stackThirstById[stackId] ?? 0;
+  }
+
   _CapturePolicy _capturePolicyForPlayer(int playerId) {
     return _capturePolicyByPlayer[playerId] ?? _CapturePolicy.spare;
   }
@@ -1677,6 +2009,63 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       return 'Tight';
     }
     return 'Stable';
+  }
+
+  String _waterStateLabel(int water, int thirst) {
+    if (thirst >= 3 || water <= 0) {
+      return 'Parched';
+    }
+    if (thirst >= 2 || water <= 1) {
+      return 'Dry';
+    }
+    if (thirst >= 1 || water <= 2) {
+      return 'Watch';
+    }
+    return 'Secure';
+  }
+
+  bool _hasReliableWaterSource(WorldState world, BoardPosition position) {
+    if (world.tileTouchesRiver(position)) {
+      return true;
+    }
+    if (world.settlementAt(position) != null) {
+      return true;
+    }
+    final camp = world.campAt(position);
+    return camp != null && camp.activeAtRound(world.round);
+  }
+
+  RiverEdgeType? _bestRiverAccessAt(WorldState world, BoardPosition position) {
+    RiverEdgeType? best;
+    for (final edge in world.riverEdges) {
+      if (!edge.touches(position)) {
+        continue;
+      }
+      if (edge.type == RiverEdgeType.bridge) {
+        return RiverEdgeType.bridge;
+      }
+      best ??= edge.type;
+    }
+    return best;
+  }
+
+  String _waterAccessLabel(WorldState world, BoardPosition position) {
+    final riverAccess = _bestRiverAccessAt(world, position);
+    if (riverAccess != null) {
+      return switch (riverAccess) {
+        RiverEdgeType.river => 'Riverbank water access',
+        RiverEdgeType.ford => 'Ford crossing and river access',
+        RiverEdgeType.bridge => 'Bridge crossing and river access',
+      };
+    }
+    if (world.settlementAt(position) != null) {
+      return 'Settlement wells and cisterns';
+    }
+    final camp = world.campAt(position);
+    if (camp != null && camp.activeAtRound(world.round)) {
+      return 'Camp stores and animal train';
+    }
+    return 'No reliable water source';
   }
 
   WorldState? _consumeStrategicCost({
@@ -1720,6 +2109,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     _WorldMoveMarker? worldMoveMarker,
     Map<String, int>? stackSupplyById,
     Map<String, int>? stackStarvationById,
+    Map<String, int>? stackWaterById,
+    Map<String, int>? stackThirstById,
     String? preserveStackId,
     String? preserveSettlementId,
     Map<BoardPosition, int>? foodTileOwnerByPosition,
@@ -1732,6 +2123,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       updatedWorld,
       supplySource: stackSupplyById,
       starvationSource: stackStarvationById,
+      waterSource: stackWaterById,
+      thirstSource: stackThirstById,
     );
     final capturePolicies = _reconcileCapturePolicies(updatedWorld);
     final remainingCp = _commandPointsForPlayer(updatedWorld, activeId);
@@ -1771,6 +2164,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       _strategicActionsByPlayer = updatedActionLedger;
       _stackSupplyById = reconciledLogistics.supplyById;
       _stackStarvationById = reconciledLogistics.starvationById;
+      _stackWaterById = reconciledLogistics.waterById;
+      _stackThirstById = reconciledLogistics.thirstById;
       _capturePolicyByPlayer = capturePolicies;
       _foodTileOwnerByPosition = resolvedFoodTiles;
       _pillagedTileUntilRound = resolvedPillagedTiles;
@@ -2310,7 +2705,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       return;
     }
 
-    final defaultPosture = _foodForPlayer(withCost, selected.ownerId) <= 2
+    final riverbankCamp = withCost.tileTouchesRiver(selected.position);
+    final defaultPosture =
+        riverbankCamp || _foodForPlayer(withCost, selected.ownerId) <= 2
         ? CampPosture.supply
         : CampPosture.fortified;
     final camps = List<CampState>.from(withCost.camps);
@@ -2320,9 +2717,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         ownerId: selected.ownerId,
         position: selected.position,
         createdRound: withCost.round,
-        expiresRound: withCost.round + 2,
+        expiresRound: withCost.round + (riverbankCamp ? 3 : 2),
         posture: defaultPosture,
-        supplyStock: 2,
+        supplyStock: riverbankCamp ? 3 : 2,
         fatigueRecovery: defaultPosture == CampPosture.fortified ? 1 : 0,
         trapPrepared: defaultPosture == CampPosture.fortified,
       ),
@@ -2343,13 +2740,14 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       camps: camps,
       log: [
         ...withCost.log,
-        'Round ${withCost.round}: ${selected.id} established a $postureLabel camp at (${selected.position.row},${selected.position.col}).',
+        'Round ${withCost.round}: ${selected.id} established a ${riverbankCamp ? 'riverbank ' : ''}$postureLabel camp at (${selected.position.row},${selected.position.col}).',
       ],
     );
     _finalizeStrategicAction(
       updatedWorld: updatedWorld,
       fromAi: fromAi,
-      statusLine: '${selected.id} established a $postureLabel camp.',
+      statusLine:
+          '${selected.id} established a ${riverbankCamp ? 'riverbank ' : ''}$postureLabel camp.',
     );
   }
 
@@ -2662,6 +3060,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     var moraleShield = 0;
     var garrisonSupport = 0;
     var trapArmed = false;
+    final riverAnchor = world.tileTouchesRiver(defender.position);
 
     final defenderOwnsSettlement =
         settlement != null && settlement.ownerId == defender.ownerId;
@@ -2692,6 +3091,12 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           laneConstraint += 1;
       }
     }
+    if (riverAnchor) {
+      laneConstraint += 1;
+      if (defenderOwnsCamp || defenderOwnsSettlement) {
+        moraleShield += 1;
+      }
+    }
     laneConstraint = laneConstraint.clamp(0, 2).toInt();
 
     final extraBlocked = _fortificationBlocks(
@@ -2709,22 +3114,30 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final defenderFood = _foodForPlayer(world, defender.ownerId);
     final attackerSupplyPenalty = _stackSupply(attacker.id) <= 1 ? 1 : 0;
     final defenderSupplyPenalty = _stackSupply(defender.id) <= 1 ? 1 : 0;
+    final attackerWaterPenalty = _stackWater(attacker.id) <= 1 ? 2 : 0;
+    final defenderWaterPenalty = _stackWater(defender.id) <= 1 ? 2 : 0;
     final attackerStarvationPenalty = _stackStarvation(attacker.id) >= 2
         ? 1
         : 0;
     final defenderStarvationPenalty = _stackStarvation(defender.id) >= 2
         ? 1
         : 0;
+    final attackerThirstPenalty = _stackThirst(attacker.id) >= 1 ? 1 : 0;
+    final defenderThirstPenalty = _stackThirst(defender.id) >= 1 ? 1 : 0;
     final attackerPenalty =
         (attackerFood <= 1 ? 1 : 0) +
         attacker.fatigue +
         attackerSupplyPenalty +
-        attackerStarvationPenalty;
+        attackerStarvationPenalty +
+        attackerWaterPenalty +
+        attackerThirstPenalty;
     final defenderPenalty =
         (defenderFood <= 1 ? 1 : 0) +
         defender.fatigue +
         defenderSupplyPenalty +
-        defenderStarvationPenalty;
+        defenderStarvationPenalty +
+        defenderWaterPenalty +
+        defenderThirstPenalty;
 
     final attackerMorale = (6 - attackerPenalty).clamp(1, 8).toInt();
     final defenderMorale =
@@ -2742,6 +3155,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     if (moraleShield > 0 || garrisonSupport > 0) {
       notes.add('Defender shield +${moraleShield + garrisonSupport}.');
     }
+    if (riverAnchor) {
+      notes.add('River line narrows the frontage near the defender.');
+    }
     if (defenderOwnsCamp) {
       notes.add('Defender camp posture: ${_campPostureLabel(camp.posture)}.');
     }
@@ -2750,7 +3166,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     }
     if (attackerPenalty > 0 || defenderPenalty > 0) {
       notes.add(
-        'Supply/fatigue pressure: attacker -$attackerPenalty, defender -$defenderPenalty morale.',
+        'Supply/water/fatigue pressure: attacker -$attackerPenalty, defender -$defenderPenalty morale.',
       );
     }
 
@@ -2809,13 +3225,21 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final updatedActionLedger = <int, int>{..._strategicActionsByPlayer};
     updatedActionLedger[actingPlayerId] =
         (updatedActionLedger[actingPlayerId] ?? 0) + 1;
-    final reconciledLogistics = _reconcileStackLogistics(preparedWorld);
+    final reconciledLogistics = _reconcileStackLogistics(
+      preparedWorld,
+      supplySource: _stackSupplyById,
+      starvationSource: _stackStarvationById,
+      waterSource: _stackWaterById,
+      thirstSource: _stackThirstById,
+    );
     final capturePolicies = _reconcileCapturePolicies(preparedWorld);
     setState(() {
       _world = preparedWorld;
       _strategicActionsByPlayer = updatedActionLedger;
       _stackSupplyById = reconciledLogistics.supplyById;
       _stackStarvationById = reconciledLogistics.starvationById;
+      _stackWaterById = reconciledLogistics.waterById;
+      _stackThirstById = reconciledLogistics.thirstById;
       _capturePolicyByPlayer = capturePolicies;
       _phase = _GamePhase.battle;
       _battle = session;
@@ -2950,8 +3374,26 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
 
       setState(() {
         _aiBusy = true;
-        _status = 'Enemy host sighted. War councils are setting doctrine.';
+        _status = 'Enemy host sighted. War councils are assessing the field...';
       });
+
+      bool engage = true;
+      if (_playerTypeById(occupant.ownerId) == PlayerType.human) {
+        engage = await _showEngagementDecisionDialog(
+          ownStack: occupant,
+          enemyStack: movedAttackerStack,
+          battlePosition: move.to,
+        );
+      }
+
+      if (!engage) {
+        setState(() {
+          _aiBusy = false;
+          _status =
+              'P${occupant.ownerId + 1} refused engagement. Tactical withdrawal.';
+        });
+        return;
+      }
 
       if (_playerTypeById(stack.ownerId) == PlayerType.human) {
         setState(() {
@@ -3201,6 +3643,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     );
     final updatedSupplyById = <String, int>{..._stackSupplyById};
     final updatedStarvationById = <String, int>{..._stackStarvationById};
+    final updatedWaterById = <String, int>{..._stackWaterById};
+    final updatedThirstById = <String, int>{..._stackThirstById};
     var updatedSettlements = List<SettlementState>.from(world.settlements);
     var updatedCamps = List<CampState>.from(world.camps);
     var updatedFoodTileOwners = <BoardPosition, int>{
@@ -3284,6 +3728,12 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           .toInt();
       updatedStarvationById[stack.id] = 0;
     }
+    if (_hasReliableWaterSource(withCost, move.to)) {
+      final before =
+          updatedWaterById[stack.id] ?? _initialWaterForStack(withCost, stack);
+      updatedWaterById[stack.id] = (before + 1).clamp(0, 6).toInt();
+      updatedThirstById[stack.id] = 0;
+    }
 
     final actor = fromAi ? 'AI' : 'Player ${stack.ownerId + 1}';
     final updatedWorld = withCost.copyWith(
@@ -3309,6 +3759,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       worldMoveMarker: enemyMoveMarker,
       stackSupplyById: updatedSupplyById,
       stackStarvationById: updatedStarvationById,
+      stackWaterById: updatedWaterById,
+      stackThirstById: updatedThirstById,
       preserveStackId: stack.id,
       foodTileOwnerByPosition: updatedFoodTileOwners,
       pillagedTileUntilRound: updatedPillagedTiles,
@@ -3324,6 +3776,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     var updatedWorld = world;
     var supplyByStackId = Map<String, int>.from(_stackSupplyById);
     var starvationByStackId = Map<String, int>.from(_stackStarvationById);
+    var waterByStackId = Map<String, int>.from(_stackWaterById);
+    var thirstByStackId = Map<String, int>.from(_stackThirstById);
     var foodTileOwnerByPosition = Map<BoardPosition, int>.from(
       _foodTileOwnerByPosition,
     );
@@ -3356,6 +3810,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         updatedWorld,
         supplySource: supplyByStackId,
         starvationSource: starvationByStackId,
+        waterSource: waterByStackId,
+        thirstSource: thirstByStackId,
       );
       final capturePolicies = _reconcileCapturePolicies(updatedWorld);
       final sequence = _matchOverSequence + 1;
@@ -3363,6 +3819,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         _world = updatedWorld;
         _stackSupplyById = reconciledLogistics.supplyById;
         _stackStarvationById = reconciledLogistics.starvationById;
+        _stackWaterById = reconciledLogistics.waterById;
+        _stackThirstById = reconciledLogistics.thirstById;
         _capturePolicyByPlayer = capturePolicies;
         _foodTileOwnerByPosition = _sanitizeFoodTileControlMap(
           updatedWorld,
@@ -3408,10 +3866,14 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         updatedWorld,
         supplySource: supplyByStackId,
         starvationSource: starvationByStackId,
+        waterSource: waterByStackId,
+        thirstSource: thirstByStackId,
       );
       updatedWorld = logistics.world;
       supplyByStackId = logistics.supplyByStackId;
       starvationByStackId = logistics.starvationByStackId;
+      waterByStackId = logistics.waterByStackId;
+      thirstByStackId = logistics.thirstByStackId;
       foodTileOwnerByPosition = _sanitizeFoodTileControlMap(
         updatedWorld,
         source: foodTileOwnerByPosition,
@@ -3433,6 +3895,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       updatedWorld,
       supplySource: supplyByStackId,
       starvationSource: starvationByStackId,
+      waterSource: waterByStackId,
+      thirstSource: thirstByStackId,
     );
     final capturePolicies = _reconcileCapturePolicies(updatedWorld);
 
@@ -3441,6 +3905,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       _strategicActionsByPlayer = updatedActionLedger;
       _stackSupplyById = reconciledLogistics.supplyById;
       _stackStarvationById = reconciledLogistics.starvationById;
+      _stackWaterById = reconciledLogistics.waterById;
+      _stackThirstById = reconciledLogistics.thirstById;
       _capturePolicyByPlayer = capturePolicies;
       _foodTileOwnerByPosition = foodTileOwnerByPosition;
       _pillagedTileUntilRound = pillagedTileUntilRound;
@@ -3701,6 +4167,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     WorldState world, {
     required Map<String, int> supplySource,
     required Map<String, int> starvationSource,
+    required Map<String, int> waterSource,
+    required Map<String, int> thirstSource,
   }) {
     final settlements = List<SettlementState>.from(world.settlements);
     final settlementByPosition = <BoardPosition, int>{
@@ -3714,19 +4182,38 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final updatedStacks = <ArmyStack>[];
     final supplyByStackId = <String, int>{};
     final starvationByStackId = <String, int>{};
+    final waterByStackId = <String, int>{};
+    final thirstByStackId = <String, int>{};
 
     for (final stack in world.stacks) {
       final previousSupply =
           (supplySource[stack.id] ?? _initialSupplyForStack(world, stack))
               .clamp(0, 8)
               .toInt();
+      final previousWater =
+          (waterSource[stack.id] ?? _initialWaterForStack(world, stack))
+              .clamp(0, 6)
+              .toInt();
+      final supplyReport = _supplyLineReport(world, stack);
       var supplyGain = 0;
+      var waterGain = 0;
+      var dangerousForage = false;
+      final enemyPressure = _enemyPressureAt(
+        world,
+        stack.position,
+        stack.ownerId,
+      );
 
       final settlementIndex = settlementByPosition[stack.position];
       if (settlementIndex != null) {
         final settlement = settlements[settlementIndex];
+        waterGain += 1;
         if (settlement.ownerId == stack.ownerId) {
-          final requisition = settlement.supplyStock >= 2 ? 2 : 1;
+          final requisition = switch (supplyReport.state) {
+            _SupplyLineState.secure => settlement.supplyStock >= 2 ? 2 : 1,
+            _SupplyLineState.stretched => 1,
+            _SupplyLineState.isolated => 1,
+          };
           final granted = settlement.supplyStock <= 0
               ? 0
               : requisition.clamp(0, settlement.supplyStock);
@@ -3747,11 +4234,21 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         final tileOwner = _foodTileOwnerByPosition[stack.position];
         final tilePillaged =
             (_pillagedTileUntilRound[stack.position] ?? 0) >= world.round;
+        if (supplyReport.state == _SupplyLineState.secure) {
+          supplyGain += 1;
+        }
         if (isPassable && !tilePillaged) {
           if (tileOwner == stack.ownerId) {
-            supplyGain += 2;
+            supplyGain += supplyReport.state == _SupplyLineState.isolated
+                ? 1
+                : 2;
+            dangerousForage = supplyReport.state != _SupplyLineState.secure;
           } else if (tileOwner == null) {
             supplyGain += 1;
+            dangerousForage = true;
+          } else if (tileOwner != stack.ownerId) {
+            supplyGain += 1;
+            dangerousForage = true;
           }
         }
       }
@@ -3761,18 +4258,45 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         if (camp.posture == CampPosture.supply && camp.supplyStock > 0) {
           supplyGain += 1;
         }
+        waterGain += camp.posture == CampPosture.supply ? 2 : 1;
+      }
+      if (world.tileTouchesRiver(stack.position)) {
+        waterGain += 2;
+      }
+      if (supplyReport.state == _SupplyLineState.stretched &&
+          settlementIndex == null &&
+          camp == null &&
+          supplyGain > 0) {
+        supplyGain -= 1;
       }
 
       final supplyAfterUpkeep = (previousSupply + supplyGain - 1).clamp(0, 8);
       final newSupply = supplyAfterUpkeep.toInt();
+      final waterAfterUpkeep = (previousWater + waterGain - 1).clamp(0, 6);
+      final newWater = waterAfterUpkeep.toInt();
       var starvation = (starvationSource[stack.id] ?? 0).clamp(0, 6).toInt();
       if (newSupply <= 0) {
         starvation = (starvation + 1).clamp(0, 6).toInt();
       } else if (newSupply >= 2) {
         starvation = (starvation - 1).clamp(0, 6).toInt();
       }
+      var thirst = (thirstSource[stack.id] ?? 0).clamp(0, 6).toInt();
+      if (newWater <= 0) {
+        thirst = (thirst + 2).clamp(0, 6).toInt();
+      } else if (newWater <= 1) {
+        thirst = (thirst + 1).clamp(0, 6).toInt();
+      } else if (newWater >= 3) {
+        thirst = (thirst - 1).clamp(0, 6).toInt();
+      }
+      if (dangerousForage) {
+        if (enemyPressure > 0 && !world.tileTouchesRiver(stack.position)) {
+          thirst = (thirst + 1).clamp(0, 6).toInt();
+        }
+      }
 
-      var updatedFatigue = stack.fatigue;
+      var updatedFatigue = dangerousForage
+          ? (stack.fatigue + 1).clamp(0, 4)
+          : stack.fatigue;
       if (newSupply <= 0) {
         updatedFatigue = (updatedFatigue + 1).clamp(0, 4);
       } else if (newSupply >= 4) {
@@ -3781,8 +4305,20 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       if (starvation >= 2) {
         updatedFatigue = (updatedFatigue + 1).clamp(0, 4);
       }
+      if (newWater <= 1 || thirst >= 1) {
+        updatedFatigue = (updatedFatigue + 1).clamp(0, 4);
+      }
 
       var updatedArmy = stack.army;
+      if (thirst >= 2) {
+        final afterDesertion = _removeDesertingUnit(updatedArmy);
+        if (afterDesertion != null) {
+          updatedArmy = afterDesertion;
+          log.add(
+            'Round ${world.round}: ${stack.id} lost a unit to thirst and straggling near ${_waterAccessLabel(world, stack.position).toLowerCase()}.',
+          );
+        }
+      }
       if (starvation >= 3) {
         final afterDesertion = _removeDesertingUnit(updatedArmy);
         if (afterDesertion != null) {
@@ -3792,15 +4328,35 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           );
         }
       }
+      if (dangerousForage) {
+        final dangerText = enemyPressure > 0
+            ? 'foraged under enemy pressure'
+            : 'foraged off unsecured ground';
+        log.add(
+          'Round ${world.round}: ${stack.id} $dangerText because its line to ${supplyReport.anchor?.label ?? 'home territory'} is ${supplyReport.stateLabel.toLowerCase()}.',
+        );
+      }
+      if (supplyReport.state == _SupplyLineState.isolated) {
+        log.add(
+          'Round ${world.round}: ${stack.id} is isolated from friendly supply territory.',
+        );
+      }
 
       if (newSupply <= 1) {
         log.add(
           'Round ${world.round}: ${stack.id} supply is critical (S$newSupply).',
         );
       }
+      if (newWater <= 1) {
+        log.add(
+          'Round ${world.round}: ${stack.id} water is failing (W$newWater).',
+        );
+      }
 
       supplyByStackId[stack.id] = newSupply;
       starvationByStackId[stack.id] = starvation;
+      waterByStackId[stack.id] = newWater;
+      thirstByStackId[stack.id] = thirst;
       updatedStacks.add(
         stack.copyWith(army: updatedArmy, fatigue: updatedFatigue),
       );
@@ -3814,6 +4370,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       ),
       supplyByStackId: supplyByStackId,
       starvationByStackId: starvationByStackId,
+      waterByStackId: waterByStackId,
+      thirstByStackId: thirstByStackId,
     );
   }
 
@@ -4133,6 +4691,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               content: SizedBox(
                 width: 580,
                 child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -4262,6 +4821,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           content: SizedBox(
             width: 620,
             child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -4402,6 +4962,36 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     _scheduleBattleOverlayClear(_battleTurnOverlay);
 
     _resolveBattleProgress();
+  }
+
+  void _useCharge() {
+    final session = _battle;
+    if (session == null || _phase != _GamePhase.battle) {
+      return;
+    }
+    final nextState = session.battleState.useCharge();
+    setState(() {
+      _battle = session.copyWith(battleState: nextState);
+      _status = 'P${session.battleState.activePlayer + 1} ordered a CHARGE!';
+      _selectedBattlePieceId = null;
+      _battleLegalMoves = const <BoardPosition>{};
+    });
+    _triggerAiTurnIfNeeded();
+  }
+
+  void _useDefend() {
+    final session = _battle;
+    if (session == null || _phase != _GamePhase.battle) {
+      return;
+    }
+    final nextState = session.battleState.useDefend();
+    setState(() {
+      _battle = session.copyWith(battleState: nextState);
+      _status = 'P${session.battleState.activePlayer + 1} is DIGGING IN!';
+      _selectedBattlePieceId = null;
+      _battleLegalMoves = const <BoardPosition>{};
+    });
+    _triggerAiTurnIfNeeded();
   }
 
   void _advanceFrontline({bool fromAi = false}) {
@@ -4794,6 +5384,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         .toList();
     final updatedSupplyById = <String, int>{..._stackSupplyById};
     final updatedStarvationById = <String, int>{..._stackStarvationById};
+    final updatedWaterById = <String, int>{..._stackWaterById};
+    final updatedThirstById = <String, int>{..._stackThirstById};
     String winnerStackId;
 
     if (winnerPlayerId == session.attackerStack.ownerId) {
@@ -4889,6 +5481,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           .toInt();
       updatedStarvationById[winnerStackId] = 0;
     }
+    if (_hasReliableWaterSource(world, session.defenderStack.position)) {
+      final waterBefore = updatedWaterById[winnerStackId] ?? 3;
+      updatedWaterById[winnerStackId] = (waterBefore + 1).clamp(0, 6).toInt();
+      updatedThirstById[winnerStackId] = 0;
+    }
 
     final updatedWorld = world.copyWith(
       stacks: stacks,
@@ -4969,6 +5566,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       updatedWorld,
       supplySource: updatedSupplyById,
       starvationSource: updatedStarvationById,
+      waterSource: updatedWaterById,
+      thirstSource: updatedThirstById,
     );
     final capturePolicies = _reconcileCapturePolicies(updatedWorld);
 
@@ -4977,6 +5576,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       _world = updatedWorld;
       _stackSupplyById = reconciledLogistics.supplyById;
       _stackStarvationById = reconciledLogistics.starvationById;
+      _stackWaterById = reconciledLogistics.waterById;
+      _stackThirstById = reconciledLogistics.thirstById;
       _capturePolicyByPlayer = capturePolicies;
       _battle = null;
       _selectedStackId = null;
@@ -5256,6 +5857,60 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     return score;
   }
 
+  Future<bool> _showEngagementDecisionDialog({
+    required ArmyStack ownStack,
+    required ArmyStack enemyStack,
+    required BoardPosition battlePosition,
+  }) async {
+    final res = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          title: const Text('Engagement!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'An enemy host from Player ${enemyStack.ownerId + 1} (${enemyStack.id}) '
+                'is moving to engage your stack ${ownStack.id} at (${battlePosition.row},${battlePosition.col}).',
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Your Strength: ${_armyTileSummary(ownStack.army)}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Enemy Strength: ${_armyTileSummary(enemyStack.army)}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.red.shade900,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Do you stand your ground and fight?'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Tactical Withdrawal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Engage'),
+            ),
+          ],
+        );
+      },
+    );
+    return res ?? true;
+  }
+
   Future<BattleSideDeploymentPlan?> _selectSideDeploymentPlan({
     required ArmyStack ownStack,
     required ArmyStack enemyStack,
@@ -5282,6 +5937,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 560),
               child: SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -5544,6 +6200,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final armyCountOptions = [
       for (var count = 2; count <= maxArmiesForCurrentSize; count++) count,
     ];
+
     return Scaffold(
       appBar: AppBar(
         title: Text('ChessWarss - ${mode.label} Setup'),
@@ -5551,7 +6208,12 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           IconButton(
             tooltip: 'Session',
             onPressed: _showSessionMenu,
-            icon: const Icon(Icons.pause_circle_filled_rounded),
+            icon: const Icon(Icons.shield_rounded),
+          ),
+          IconButton(
+            tooltip: 'War Lab',
+            onPressed: _showWarLabSheet,
+            icon: const Icon(Icons.bug_report_rounded),
           ),
           IconButton(
             tooltip: 'Field Manual',
@@ -5581,196 +6243,227 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                 child: Card(
                   child: Padding(
                     padding: const EdgeInsets.all(18),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (mode.playerControlEditable)
-                            DropdownButtonFormField<int>(
-                              initialValue: _playerCount,
-                              decoration: const InputDecoration(
-                                labelText: 'Players',
-                              ),
-                              items: [
-                                for (
-                                  var count = mode.minPlayerCount;
-                                  count <= mode.maxPlayerCount;
-                                  count++
-                                )
-                                  DropdownMenuItem(
-                                    value: count,
-                                    child: Text('$count'),
-                                  ),
-                              ],
-                              onChanged: (value) {
-                                if (value == null) {
-                                  return;
-                                }
-                                setState(() {
-                                  _playerCount = value;
-                                  if (_mapSize == 3 && value > 2) {
-                                    _mapSize = 4;
-                                    _mapSizeManuallySet = true;
-                                  }
-                                  if (!_mapSizeManuallySet) {
-                                    _mapSize = _defaultMapSizeForPlayers(value);
-                                  }
-                                });
-                              },
-                            )
-                          else
-                            const InputDecorator(
-                              decoration: InputDecoration(labelText: 'Players'),
-                              child: Text('2 (Solo: Human vs AI)'),
-                            ),
-                          const SizedBox(height: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (mode.playerControlEditable)
                           DropdownButtonFormField<int>(
-                            initialValue: _mapSize,
+                            initialValue: _playerCount,
                             decoration: const InputDecoration(
-                              labelText: 'World Size',
+                              labelText: 'Players',
                             ),
-                            items: modeMapOptions
-                                .map(
-                                  (size) => DropdownMenuItem(
-                                    value: size,
-                                    child: Text('${size}x$size'),
-                                  ),
-                                )
-                                .toList(),
+                            items: [
+                              for (
+                                var count = mode.minPlayerCount;
+                                count <= mode.maxPlayerCount;
+                                count++
+                              )
+                                DropdownMenuItem(
+                                  value: count,
+                                  child: Text('$count'),
+                                ),
+                            ],
                             onChanged: (value) {
                               if (value == null) {
                                 return;
                               }
                               setState(() {
-                                _mapSize = value;
-                                if (_mapSize == 3 && _playerCount > 2) {
-                                  _playerCount = 2;
+                                _playerCount = value;
+                                if (_mapSize == 3 && value > 2) {
+                                  _mapSize = 4;
+                                  _mapSizeManuallySet = true;
                                 }
-                                final maxForSize = _maxArmiesForMapSize(value);
-                                if (_armiesPerPlayer > maxForSize) {
-                                  _armiesPerPlayer = maxForSize;
+                                if (!_mapSizeManuallySet) {
+                                  _mapSize = _defaultMapSizeForPlayers(value);
                                 }
-                                _mapSizeManuallySet = true;
                               });
                             },
+                          )
+                        else
+                          const InputDecorator(
+                            decoration: InputDecoration(labelText: 'Players'),
+                            child: Text('2 (Solo: Human vs AI)'),
                           ),
-                          const SizedBox(height: 10),
-                          DropdownButtonFormField<int>(
-                            initialValue: _armiesPerPlayer,
-                            decoration: const InputDecoration(
-                              labelText: 'Armies Per Player',
-                            ),
-                            items: armyCountOptions
-                                .map(
-                                  (count) => DropdownMenuItem(
-                                    value: count,
-                                    child: Text(
-                                      count == 4 ? '4 (4v4 in 1v1)' : '$count',
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              if (value == null) {
-                                return;
-                              }
-                              setState(() {
-                                _armiesPerPlayer = value;
-                              });
-                            },
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<int>(
+                          initialValue: _mapSize,
+                          decoration: const InputDecoration(
+                            labelText: 'World Size',
                           ),
-                          const SizedBox(height: 10),
-                          DropdownButtonFormField<MapPreset>(
-                            initialValue: _mapPreset,
-                            decoration: const InputDecoration(
-                              labelText: 'Map Preset',
-                            ),
-                            items: MapPreset.values
-                                .map(
-                                  (preset) => DropdownMenuItem(
-                                    value: preset,
-                                    child: Text(_presetLabel(preset)),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              if (value == null) {
-                                return;
-                              }
-                              setState(() {
-                                _mapPreset = value;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          DropdownButtonFormField<AiDifficulty>(
-                            initialValue: _aiDifficulty,
-                            decoration: const InputDecoration(
-                              labelText: 'AI Difficulty',
-                            ),
-                            items: AiDifficulty.values
-                                .map(
-                                  (difficulty) => DropdownMenuItem(
-                                    value: difficulty,
-                                    child: Text(difficulty.label),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              if (value == null) {
-                                return;
-                              }
-                              setState(() {
-                                _aiDifficulty = value;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Player Control',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          if (mode.playerControlEditable)
-                            for (var i = 0; i < _playerCount; i++)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: DropdownButtonFormField<PlayerType>(
-                                  initialValue: _playerTypes[i],
-                                  decoration: InputDecoration(
-                                    labelText: 'Player ${i + 1}',
-                                  ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: PlayerType.human,
-                                      child: Text('Human'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: PlayerType.ai,
-                                      child: Text('AI'),
-                                    ),
-                                  ],
-                                  onChanged: (value) {
-                                    if (value == null) {
-                                      return;
-                                    }
-                                    setState(() {
-                                      _playerTypes[i] = value;
-                                    });
-                                  },
+                          items: modeMapOptions
+                              .map(
+                                (size) => DropdownMenuItem(
+                                  value: size,
+                                  child: Text('${size}x$size'),
                                 ),
                               )
-                          else
-                            const Card(
-                              child: Padding(
-                                padding: EdgeInsets.all(10),
-                                child: Text(
-                                  'Eterna is solo-first right now: Player 1 is Human, Player 2 is AI.',
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setState(() {
+                              _mapSize = value;
+                              if (_mapSize == 3 && _playerCount > 2) {
+                                _playerCount = 2;
+                              }
+                              final maxForSize = _maxArmiesForMapSize(value);
+                              if (_armiesPerPlayer > maxForSize) {
+                                _armiesPerPlayer = maxForSize;
+                              }
+                              _mapSizeManuallySet = true;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<int>(
+                          initialValue: _armiesPerPlayer,
+                          decoration: const InputDecoration(
+                            labelText: 'Armies Per Player',
+                          ),
+                          items: armyCountOptions
+                              .map(
+                                (count) => DropdownMenuItem(
+                                  value: count,
+                                  child: Text(
+                                    count == 4 ? '4 (4v4 in 1v1)' : '$count',
+                                  ),
                                 ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setState(() {
+                              _armiesPerPlayer = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<MapPreset>(
+                          initialValue: _mapPreset,
+                          decoration: const InputDecoration(
+                            labelText: 'Map Preset',
+                          ),
+                          items: MapPreset.values
+                              .map(
+                                (preset) => DropdownMenuItem(
+                                  value: preset,
+                                  child: Text(_presetLabel(preset)),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setState(() {
+                              _mapPreset = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Map Lab',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            FilledButton.tonalIcon(
+                              onPressed: () {
+                                _cycleMapPreset(-1);
+                              },
+                              icon: const Icon(Icons.chevron_left_rounded),
+                              label: const Text('Prev Preset'),
+                            ),
+                            FilledButton.tonalIcon(
+                              onPressed: () {
+                                _cycleMapPreset(1);
+                              },
+                              icon: const Icon(Icons.chevron_right_rounded),
+                              label: const Text('Next Preset'),
+                            ),
+                            FilledButton.tonalIcon(
+                              onPressed: _showWarLabSheet,
+                              icon: const Icon(Icons.bug_report_rounded),
+                              label: const Text('War Lab'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<AiDifficulty>(
+                          initialValue: _aiDifficulty,
+                          decoration: const InputDecoration(
+                            labelText: 'AI Difficulty',
+                          ),
+                          items: AiDifficulty.values
+                              .map(
+                                (difficulty) => DropdownMenuItem(
+                                  value: difficulty,
+                                  child: Text(difficulty.label),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setState(() {
+                              _aiDifficulty = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Player Control',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        if (mode.playerControlEditable)
+                          for (var i = 0; i < _playerCount; i++)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: DropdownButtonFormField<PlayerType>(
+                                initialValue: _playerTypes[i],
+                                decoration: InputDecoration(
+                                  labelText: 'Player ${i + 1}',
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: PlayerType.human,
+                                    child: Text('Human'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: PlayerType.ai,
+                                    child: Text('AI'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value == null) {
+                                    return;
+                                  }
+                                  setState(() {
+                                    _playerTypes[i] = value;
+                                  });
+                                },
+                              ),
+                            )
+                        else
+                          const Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(10),
+                              child: Text(
+                                'Eterna is solo-first right now: Player 1 is Human, Player 2 is AI.',
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -5801,7 +6494,12 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
             IconButton(
               tooltip: 'Session',
               onPressed: _showSessionMenu,
-              icon: const Icon(Icons.pause_circle_filled_rounded),
+              icon: const Icon(Icons.shield_rounded),
+            ),
+            IconButton(
+              tooltip: 'War Lab',
+              onPressed: _showWarLabSheet,
+              icon: const Icon(Icons.bug_report_rounded),
             ),
             IconButton(
               tooltip: 'Field Manual',
@@ -5816,10 +6514,26 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               padding: const EdgeInsets.all(8),
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  final useWideLayout =
+                      constraints.maxWidth >= 1080 &&
+                      constraints.maxHeight >= 720;
                   final boardPanelHeight = math.min(
                     constraints.maxHeight * 0.64,
                     constraints.maxWidth + 24,
                   );
+                  if (useWideLayout) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: _buildWorldBoard(world)),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: math.min(388, constraints.maxWidth * 0.34),
+                          child: _buildWorldSidebar(world, activePlayer),
+                        ),
+                      ],
+                    );
+                  }
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -5840,6 +6554,320 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     );
   }
 
+  Iterable<BoardPosition> _campaignNeighbors(
+    WorldState world,
+    BoardPosition origin,
+  ) sync* {
+    for (final delta in const [
+      BoardPosition(-1, 0),
+      BoardPosition(1, 0),
+      BoardPosition(0, -1),
+      BoardPosition(0, 1),
+    ]) {
+      final next = origin.offset(delta.row, delta.col);
+      if (!world.isInside(next)) {
+        continue;
+      }
+      if (!world.isPassable(next)) {
+        continue;
+      }
+      if (!world.canTraverseBetween(origin, next)) {
+        continue;
+      }
+      yield next;
+    }
+  }
+
+  bool _isEnemyOccupiedTile(
+    WorldState world,
+    BoardPosition position,
+    int playerId,
+  ) {
+    final stack = world.stackAt(position);
+    if (stack != null && stack.ownerId != playerId) {
+      return true;
+    }
+    final settlement = world.settlementAt(position);
+    if (settlement != null &&
+        settlement.ownerId >= 0 &&
+        settlement.ownerId != playerId) {
+      return true;
+    }
+    final camp = world.campAt(position);
+    return camp != null &&
+        camp.activeAtRound(world.round) &&
+        camp.ownerId != playerId;
+  }
+
+  bool _isInterdictedTile(
+    WorldState world,
+    BoardPosition position,
+    int playerId,
+  ) {
+    if (_enemyPressureAt(world, position, playerId) > 0) {
+      return true;
+    }
+    final settlement = world.settlementAt(position);
+    if (settlement != null &&
+        settlement.ownerId >= 0 &&
+        settlement.ownerId != playerId) {
+      return true;
+    }
+    final camp = world.campAt(position);
+    return camp != null &&
+        camp.activeAtRound(world.round) &&
+        camp.ownerId != playerId;
+  }
+
+  List<_SupplyAnchor> _supplyAnchorsForPlayer(WorldState world, int playerId) {
+    final anchors = <_SupplyAnchor>[];
+
+    for (final settlement in world.settlements) {
+      if (settlement.ownerId != playerId) {
+        continue;
+      }
+      final type = settlement.id.startsWith('capital_')
+          ? _SupplyAnchorType.capital
+          : _SupplyAnchorType.settlement;
+      anchors.add(
+        _SupplyAnchor(
+          position: settlement.position,
+          type: type,
+          label: settlement.name,
+        ),
+      );
+    }
+
+    for (final camp in world.camps) {
+      if (!camp.activeAtRound(world.round) || camp.ownerId != playerId) {
+        continue;
+      }
+      anchors.add(
+        _SupplyAnchor(
+          position: camp.position,
+          type: camp.isOutpost
+              ? _SupplyAnchorType.outpost
+              : _SupplyAnchorType.camp,
+          label: camp.isOutpost ? 'Forward Outpost' : 'Field Camp',
+        ),
+      );
+    }
+
+    anchors.sort((a, b) {
+      final typeCompare = a.type.index.compareTo(b.type.index);
+      if (typeCompare != 0) {
+        return typeCompare;
+      }
+      final rowCompare = a.position.row.compareTo(b.position.row);
+      if (rowCompare != 0) {
+        return rowCompare;
+      }
+      return a.position.col.compareTo(b.position.col);
+    });
+    return anchors;
+  }
+
+  _SupplyLineReport _supplyLineReport(WorldState world, ArmyStack stack) {
+    final anchors = _supplyAnchorsForPlayer(world, stack.ownerId);
+    if (anchors.isEmpty) {
+      return const _SupplyLineReport(
+        state: _SupplyLineState.isolated,
+        path: <BoardPosition>[],
+        distance: 99,
+        dangerSteps: 0,
+        anchor: null,
+      );
+    }
+
+    for (final anchor in anchors) {
+      if (anchor.position == stack.position) {
+        return _SupplyLineReport(
+          state: _SupplyLineState.secure,
+          path: <BoardPosition>[stack.position],
+          distance: 0,
+          dangerSteps: 0,
+          anchor: anchor,
+        );
+      }
+    }
+
+    final anchorByPosition = <BoardPosition, _SupplyAnchor>{
+      for (final anchor in anchors) anchor.position: anchor,
+    };
+    final frontier = <BoardPosition>[stack.position];
+    final previous = <BoardPosition, BoardPosition?>{stack.position: null};
+    BoardPosition? foundAnchorPosition;
+
+    while (frontier.isNotEmpty && foundAnchorPosition == null) {
+      final current = frontier.removeAt(0);
+      for (final next in _campaignNeighbors(world, current)) {
+        if (previous.containsKey(next)) {
+          continue;
+        }
+        if (_isEnemyOccupiedTile(world, next, stack.ownerId)) {
+          continue;
+        }
+        previous[next] = current;
+        frontier.add(next);
+        if (anchorByPosition.containsKey(next)) {
+          foundAnchorPosition = next;
+          break;
+        }
+      }
+    }
+
+    if (foundAnchorPosition == null) {
+      return const _SupplyLineReport(
+        state: _SupplyLineState.isolated,
+        path: <BoardPosition>[],
+        distance: 99,
+        dangerSteps: 0,
+        anchor: null,
+      );
+    }
+
+    final path = <BoardPosition>[];
+    BoardPosition? cursor = foundAnchorPosition;
+    while (cursor != null) {
+      path.add(cursor);
+      cursor = previous[cursor];
+    }
+    final line = path.reversed.toList(growable: false);
+    final dangerSteps = line
+        .skip(1)
+        .where((position) => _isInterdictedTile(world, position, stack.ownerId))
+        .length;
+    final distance = line.length - 1;
+    final state = distance <= 3 && dangerSteps == 0
+        ? _SupplyLineState.secure
+        : (distance <= 6 && dangerSteps <= 2
+              ? _SupplyLineState.stretched
+              : _SupplyLineState.isolated);
+    return _SupplyLineReport(
+      state: state,
+      path: line,
+      distance: distance,
+      dangerSteps: dangerSteps,
+      anchor: anchorByPosition[foundAnchorPosition],
+    );
+  }
+
+  Map<int, Map<BoardPosition, int>> _territoryDepthByPlayer(WorldState world) {
+    final result = <int, Map<BoardPosition, int>>{};
+
+    for (final player in world.players) {
+      final anchors = _supplyAnchorsForPlayer(world, player.id);
+      if (anchors.isEmpty) {
+        result[player.id] = const <BoardPosition, int>{};
+        continue;
+      }
+
+      final depths = <BoardPosition, int>{};
+      final frontier = <BoardPosition>[];
+      for (final anchor in anchors) {
+        depths[anchor.position] = 0;
+        frontier.add(anchor.position);
+      }
+
+      while (frontier.isNotEmpty) {
+        final current = frontier.removeAt(0);
+        final depth = depths[current] ?? 0;
+        if (depth >= 6) {
+          continue;
+        }
+        for (final next in _campaignNeighbors(world, current)) {
+          if (_isEnemyOccupiedTile(world, next, player.id)) {
+            continue;
+          }
+          final nextDepth = depth + 1;
+          final existing = depths[next];
+          if (existing != null && existing <= nextDepth) {
+            continue;
+          }
+          depths[next] = nextDepth;
+          frontier.add(next);
+        }
+      }
+
+      result[player.id] = depths;
+    }
+
+    return result;
+  }
+
+  Map<BoardPosition, _TerritoryTileStatus> _territoryStatusMap(
+    WorldState world,
+  ) {
+    final depthsByPlayer = _territoryDepthByPlayer(world);
+    final statusByPosition = <BoardPosition, _TerritoryTileStatus>{};
+
+    for (final tile in world.tiles) {
+      if (tile.terrain != TerrainType.passable) {
+        continue;
+      }
+
+      int? ownerId;
+      var bestDepth = 999;
+      var contested = false;
+
+      for (final player in world.players) {
+        final depth = depthsByPlayer[player.id]?[tile.position];
+        if (depth == null || depth > 6) {
+          continue;
+        }
+        if (depth < bestDepth) {
+          ownerId = player.id;
+          bestDepth = depth;
+          contested = false;
+        } else if (depth == bestDepth) {
+          contested = true;
+        }
+      }
+
+      statusByPosition[tile.position] = _TerritoryTileStatus(
+        ownerId: ownerId,
+        depth: bestDepth == 999 ? 99 : bestDepth,
+        contested: contested,
+        frontline: false,
+      );
+    }
+
+    final resolved = <BoardPosition, _TerritoryTileStatus>{};
+    for (final entry in statusByPosition.entries) {
+      final position = entry.key;
+      final status = entry.value;
+      var frontline = status.contested;
+
+      for (final neighbor in _campaignNeighbors(world, position)) {
+        final neighborStatus = statusByPosition[neighbor];
+        if (neighborStatus == null) {
+          continue;
+        }
+        if (status.ownerId != null &&
+            neighborStatus.ownerId != null &&
+            status.ownerId != neighborStatus.ownerId) {
+          frontline = true;
+          break;
+        }
+      }
+
+      if (!frontline &&
+          status.ownerId != null &&
+          _enemyPressureAt(world, position, status.ownerId!) > 0) {
+        frontline = true;
+      }
+
+      resolved[position] = _TerritoryTileStatus(
+        ownerId: status.ownerId,
+        depth: status.depth,
+        contested: status.contested,
+        frontline: frontline,
+      );
+    }
+
+    return resolved;
+  }
+
   Widget _buildWorldBoard(WorldState world) {
     final activePlayer = world.players[world.activePlayerIndex];
     final stackByPosition = <BoardPosition, ArmyStack>{
@@ -5854,8 +6882,19 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         if (camp.activeAtRound(world.round)) camp.position: camp,
     };
     final selectedStackId = _selectedStackId;
+    final selectedStack = selectedStackId == null
+        ? null
+        : world.stackById(selectedStackId);
     final selectedSettlement = _selectedSettlementById(world);
     final selectedSettlementPosition = selectedSettlement?.position;
+    final territoryByPosition = _territoryStatusMap(world);
+    final supplyReportByStackId = <String, _SupplyLineReport>{
+      for (final stack in world.stacks)
+        stack.id: _supplyLineReport(world, stack),
+    };
+    final selectedSupplyReport = selectedStack == null
+        ? null
+        : supplyReportByStackId[selectedStack.id];
     final activeColor = playerColor(activePlayer.id);
     final activeTextColor = _contrastColor(activeColor);
     final activeOutposts = world.camps.where(
@@ -5907,7 +6946,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Turn: ${activePlayer.name} (Player ${activePlayer.id + 1})',
+                              'War Map • ${activePlayer.name} (Player ${activePlayer.id + 1})',
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 color: activeTextColor,
@@ -5957,8 +6996,15 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF8A7652)),
-                    color: const Color(0xFFE6D6B6),
+                    border: Border.all(
+                      color: const Color(0xFF8A7652),
+                      width: 1.3,
+                    ),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFFE8DAB8), Color(0xFFD8C29A)],
+                    ),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(8),
@@ -5966,302 +7012,459 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                       borderRadius: BorderRadius.circular(10),
                       child: LayoutBuilder(
                         builder: (context, constraints) {
-                          final boardSide = math.max(
+                          final boardWidth = math.max(
                             1.0,
                             math.min(
                               constraints.maxWidth,
-                              constraints.maxHeight,
+                              constraints.maxHeight * 1.18,
                             ),
                           );
+                          final boardHeight = math.max(
+                            1.0,
+                            math.min(constraints.maxHeight, boardWidth * 0.88),
+                          );
+                          final cellAspectRatio = boardWidth / boardHeight;
 
                           return Align(
-                            alignment: Alignment.topCenter,
+                            alignment: Alignment.center,
                             child: SizedBox(
-                              width: boardSide,
-                              height: boardSide,
-                              child: GridView.builder(
-                                primary: false,
-                                physics: const NeverScrollableScrollPhysics(),
-                                padding: EdgeInsets.zero,
-                                itemCount: world.size * world.size,
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: world.size,
-                                      childAspectRatio: 1,
-                                    ),
-                                itemBuilder: (context, index) {
-                                  final row = index ~/ world.size;
-                                  final col = index % world.size;
-                                  final position = BoardPosition(row, col);
-                                  final tile = world.tiles[index];
-                                  final stack = stackByPosition[position];
-                                  final settlement =
-                                      settlementByPosition[position];
-                                  final camp = campByPosition[position];
-
-                                  final isBlocked =
-                                      tile.terrain == TerrainType.blocked;
-                                  final isSelected =
-                                      stack != null &&
-                                      stack.id == selectedStackId;
-                                  final isSelectedSettlement =
-                                      selectedSettlementPosition == position &&
-                                      (selectedStackId == null || !isSelected);
-                                  final isActiveStack =
-                                      stack != null &&
-                                      stack.ownerId == world.activePlayerId;
-                                  final isLegalMove = _worldLegalMoves.contains(
-                                    position,
-                                  );
-                                  final foodTileOwner =
-                                      _foodTileOwnerByPosition[position];
-                                  final tilePillaged =
-                                      (_pillagedTileUntilRound[position] ??
-                                          0) >=
-                                      world.round;
-                                  final color = _worldTileColor(
-                                    row: row,
-                                    col: col,
-                                    isBlocked: isBlocked,
-                                    isSelected:
-                                        isSelected || isSelectedSettlement,
-                                    isLegalMove: isLegalMove,
-                                  );
-                                  final occupiedColor = stack == null
-                                      ? color
-                                      : Color.alphaBlend(
-                                          playerColor(stack.ownerId).withValues(
-                                            alpha: isSelected
-                                                ? 0.42
-                                                : (isActiveStack ? 0.34 : 0.24),
-                                          ),
-                                          color,
-                                        );
-                                  final settlementUnderSiege =
-                                      settlement != null &&
-                                      _isSettlementUnderSiege(
-                                        world,
-                                        settlement,
-                                      );
-                                  final campUnderPressure =
-                                      camp != null &&
-                                      _isCampUnderPressure(world, camp);
-                                  final isLastEnemyFrom =
-                                      lastEnemyMove != null &&
-                                      lastEnemyMove.from == position;
-                                  final isLastEnemyTo =
-                                      lastEnemyMove != null &&
-                                      lastEnemyMove.to == position;
-                                  final ownedFieldByActive =
-                                      foodTileOwner == world.activePlayerId &&
-                                      !tilePillaged;
-                                  final borderColor = isSelected
-                                      ? playerColor(
-                                          stack.ownerId,
-                                        ).withValues(alpha: 0.9)
-                                      : isSelectedSettlement
-                                      ? const Color(0xFF2F6A55)
-                                      : isActiveStack
-                                      ? playerColor(
-                                          stack.ownerId,
-                                        ).withValues(alpha: 0.85)
-                                      : isLastEnemyTo
-                                      ? const Color(0xFFA53224)
-                                      : isLastEnemyFrom
-                                      ? const Color(0xFF8C6C1E)
-                                      : (stack != null
-                                            ? playerColor(
-                                                stack.ownerId,
-                                              ).withValues(alpha: 0.56)
-                                            : (settlementUnderSiege ||
-                                                      campUnderPressure
-                                                  ? const Color(0xFFB33A2E)
-                                                  : (ownedFieldByActive
-                                                        ? const Color(
-                                                            0xFF2F6A55,
-                                                          ).withValues(
-                                                            alpha: 0.6,
-                                                          )
-                                                        : Colors.black
-                                                              .withValues(
-                                                                alpha: 0.18,
-                                                              ))));
-                                  final borderWidth = isSelected
-                                      ? 2.2
-                                      : isSelectedSettlement
-                                      ? 2.0
-                                      : isActiveStack
-                                      ? 2.0
-                                      : (isLastEnemyTo || isLastEnemyFrom)
-                                      ? 1.8
-                                      : (settlementUnderSiege ||
-                                                campUnderPressure
-                                            ? 1.6
-                                            : 1.0);
-
-                                  return InkWell(
-                                    onTap: isBlocked
-                                        ? null
-                                        : () => _onWorldTileTap(position),
-                                    child: AnimatedContainer(
-                                      duration: _reduceEffects
-                                          ? Duration.zero
-                                          : const Duration(milliseconds: 180),
-                                      curve: Curves.easeOutCubic,
-                                      margin: const EdgeInsets.all(1),
-                                      decoration: BoxDecoration(
-                                        color: occupiedColor,
-                                        border: Border.all(
-                                          color: borderColor,
-                                          width: borderWidth,
+                              width: boardWidth,
+                              height: boardHeight,
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: IgnorePointer(
+                                      child: CustomPaint(
+                                        painter: _WorldCampaignOverlayPainter(
+                                          world: world,
+                                          territoryByPosition:
+                                              territoryByPosition,
+                                          selectedSupplyLine:
+                                              selectedSupplyReport?.path ??
+                                              const <BoardPosition>[],
+                                          highlightedOwnerId:
+                                              selectedStack?.ownerId,
+                                          reduceEffects: _reduceEffects,
                                         ),
-                                        boxShadow:
-                                            _reduceEffects || !isActiveStack
-                                            ? const <BoxShadow>[]
-                                            : [
-                                                BoxShadow(
-                                                  color: playerColor(
-                                                    stack.ownerId,
-                                                  ).withValues(alpha: 0.35),
-                                                  blurRadius: 7,
-                                                  spreadRadius: 0.4,
-                                                ),
-                                              ],
-                                      ),
-                                      child: Stack(
-                                        children: [
-                                          if (isLegalMove && stack == null)
-                                            Center(
-                                              child: Container(
-                                                width: 16,
-                                                height: 16,
-                                                decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFF2F5D4E,
-                                                  ).withValues(alpha: 0.5),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                            ),
-                                          if (stack != null)
-                                            Center(
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(
-                                                  3,
-                                                ),
-                                                child: FittedBox(
-                                                  fit: BoxFit.scaleDown,
-                                                  child: _buildWorldStackTile(
-                                                    stack: stack,
-                                                    round: world.round,
-                                                    isActive:
-                                                        stack.ownerId ==
-                                                        world.activePlayerId,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          if (stack == null &&
-                                              (settlement != null ||
-                                                  camp != null))
-                                            Center(
-                                              child: _buildWorldTileSiteSummary(
-                                                world: world,
-                                                settlement: settlement,
-                                                camp: camp,
-                                              ),
-                                            ),
-                                          if (foodTileOwner != null ||
-                                              tilePillaged)
-                                            Positioned(
-                                              left: 2,
-                                              bottom: 2,
-                                              child: _buildFoodTileMarker(
-                                                ownerId: foodTileOwner,
-                                                pillaged: tilePillaged,
-                                              ),
-                                            ),
-                                          if (isLastEnemyFrom)
-                                            const Positioned(
-                                              left: 2,
-                                              bottom: 2,
-                                              child: DecoratedBox(
-                                                decoration: BoxDecoration(
-                                                  color: Color(0xFF8C6C1E),
-                                                  borderRadius:
-                                                      BorderRadius.all(
-                                                        Radius.circular(6),
-                                                      ),
-                                                ),
-                                                child: Padding(
-                                                  padding: EdgeInsets.symmetric(
-                                                    horizontal: 3,
-                                                    vertical: 1,
-                                                  ),
-                                                  child: Text(
-                                                    'FROM',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 7,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          if (isLastEnemyTo)
-                                            const Positioned(
-                                              right: 2,
-                                              bottom: 2,
-                                              child: DecoratedBox(
-                                                decoration: BoxDecoration(
-                                                  color: Color(0xFFA53224),
-                                                  borderRadius:
-                                                      BorderRadius.all(
-                                                        Radius.circular(6),
-                                                      ),
-                                                ),
-                                                child: Padding(
-                                                  padding: EdgeInsets.symmetric(
-                                                    horizontal: 3,
-                                                    vertical: 1,
-                                                  ),
-                                                  child: Text(
-                                                    'TO',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 7,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          if (settlement != null)
-                                            Positioned(
-                                              top: 2,
-                                              left: 2,
-                                              child: _buildSettlementBadge(
-                                                world,
-                                                settlement,
-                                              ),
-                                            ),
-                                          if (camp != null)
-                                            Positioned(
-                                              top: 2,
-                                              right: 2,
-                                              child: _buildCampBadge(
-                                                world,
-                                                camp,
-                                              ),
-                                            ),
-                                        ],
                                       ),
                                     ),
-                                  );
-                                },
+                                  ),
+                                  GridView.builder(
+                                    primary: false,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    padding: EdgeInsets.zero,
+                                    itemCount: world.size * world.size,
+                                    gridDelegate:
+                                        SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: world.size,
+                                          childAspectRatio: cellAspectRatio,
+                                        ),
+                                    itemBuilder: (context, index) {
+                                      final row = index ~/ world.size;
+                                      final col = index % world.size;
+                                      final position = BoardPosition(row, col);
+                                      final tile = world.tiles[index];
+                                      final stack = stackByPosition[position];
+                                      final settlement =
+                                          settlementByPosition[position];
+                                      final camp = campByPosition[position];
+                                      final territoryStatus =
+                                          territoryByPosition[position];
+                                      final stackSupplyReport = stack == null
+                                          ? null
+                                          : supplyReportByStackId[stack.id];
+                                      final onSelectedSupplyLine =
+                                          selectedSupplyReport?.path.contains(
+                                            position,
+                                          ) ??
+                                          false;
+                                      final northRiver = row == 0
+                                          ? null
+                                          : world
+                                                .riverEdgeBetween(
+                                                  position,
+                                                  position.offset(-1, 0),
+                                                )
+                                                ?.type;
+                                      final southRiver = row == world.size - 1
+                                          ? null
+                                          : world
+                                                .riverEdgeBetween(
+                                                  position,
+                                                  position.offset(1, 0),
+                                                )
+                                                ?.type;
+                                      final westRiver = col == 0
+                                          ? null
+                                          : world
+                                                .riverEdgeBetween(
+                                                  position,
+                                                  position.offset(0, -1),
+                                                )
+                                                ?.type;
+                                      final eastRiver = col == world.size - 1
+                                          ? null
+                                          : world
+                                                .riverEdgeBetween(
+                                                  position,
+                                                  position.offset(0, 1),
+                                                )
+                                                ?.type;
+
+                                      final isBlocked =
+                                          tile.terrain == TerrainType.blocked;
+                                      final isSelected =
+                                          stack != null &&
+                                          stack.id == selectedStackId;
+                                      final isSelectedSettlement =
+                                          selectedSettlementPosition ==
+                                              position &&
+                                          (selectedStackId == null ||
+                                              !isSelected);
+                                      final isActiveStack =
+                                          stack != null &&
+                                          stack.ownerId == world.activePlayerId;
+                                      final isLegalMove = _worldLegalMoves
+                                          .contains(position);
+                                      final foodTileOwner =
+                                          _foodTileOwnerByPosition[position];
+                                      final tilePillaged =
+                                          (_pillagedTileUntilRound[position] ??
+                                              0) >=
+                                          world.round;
+                                      final color = _worldTileColor(
+                                        row: row,
+                                        col: col,
+                                        isBlocked: isBlocked,
+                                        isSelected:
+                                            isSelected || isSelectedSettlement,
+                                        isLegalMove: isLegalMove,
+                                        territoryStatus: territoryStatus,
+                                        activePlayerId: world.activePlayerId,
+                                        onSelectedSupplyLine:
+                                            onSelectedSupplyLine,
+                                      );
+                                      final occupiedColor = stack == null
+                                          ? color
+                                          : Color.alphaBlend(
+                                              playerColor(
+                                                stack.ownerId,
+                                              ).withValues(
+                                                alpha: isSelected
+                                                    ? 0.42
+                                                    : (isActiveStack
+                                                          ? 0.34
+                                                          : 0.24),
+                                              ),
+                                              color,
+                                            );
+                                      final settlementUnderSiege =
+                                          settlement != null &&
+                                          _isSettlementUnderSiege(
+                                            world,
+                                            settlement,
+                                          );
+                                      final campUnderPressure =
+                                          camp != null &&
+                                          _isCampUnderPressure(world, camp);
+                                      final isLastEnemyFrom =
+                                          lastEnemyMove != null &&
+                                          lastEnemyMove.from == position;
+                                      final isLastEnemyTo =
+                                          lastEnemyMove != null &&
+                                          lastEnemyMove.to == position;
+                                      final ownedFieldByActive =
+                                          foodTileOwner ==
+                                              world.activePlayerId &&
+                                          !tilePillaged;
+                                      final borderColor = isSelected
+                                          ? playerColor(
+                                              stack.ownerId,
+                                            ).withValues(alpha: 0.9)
+                                          : isSelectedSettlement
+                                          ? const Color(0xFF2F6A55)
+                                          : isActiveStack
+                                          ? playerColor(
+                                              stack.ownerId,
+                                            ).withValues(alpha: 0.85)
+                                          : isLastEnemyTo
+                                          ? const Color(0xFFA53224)
+                                          : isLastEnemyFrom
+                                          ? const Color(0xFF8C6C1E)
+                                          : (stack != null
+                                                ? playerColor(
+                                                    stack.ownerId,
+                                                  ).withValues(alpha: 0.56)
+                                                : (settlementUnderSiege ||
+                                                          campUnderPressure
+                                                      ? const Color(0xFFB33A2E)
+                                                      : (territoryStatus
+                                                                    ?.frontline ??
+                                                                false
+                                                            ? const Color(
+                                                                0xFF7F4D21,
+                                                              )
+                                                            : (ownedFieldByActive
+                                                                  ? const Color(
+                                                                      0xFF2F6A55,
+                                                                    ).withValues(
+                                                                      alpha:
+                                                                          0.6,
+                                                                    )
+                                                                  : Colors.black
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              0.18,
+                                                                        )))));
+                                      final borderWidth = isSelected
+                                          ? 2.2
+                                          : isSelectedSettlement
+                                          ? 2.0
+                                          : isActiveStack
+                                          ? 2.0
+                                          : onSelectedSupplyLine
+                                          ? 1.9
+                                          : (isLastEnemyTo || isLastEnemyFrom)
+                                          ? 1.8
+                                          : (settlementUnderSiege ||
+                                                    campUnderPressure ||
+                                                    (territoryStatus
+                                                            ?.frontline ??
+                                                        false)
+                                                ? 1.6
+                                                : 1.0);
+
+                                      return InkWell(
+                                        onTap: isBlocked
+                                            ? null
+                                            : () => _onWorldTileTap(position),
+                                        child: AnimatedContainer(
+                                          duration: _reduceEffects
+                                              ? Duration.zero
+                                              : const Duration(
+                                                  milliseconds: 180,
+                                                ),
+                                          curve: Curves.easeOutCubic,
+                                          margin: const EdgeInsets.all(1),
+                                          decoration: BoxDecoration(
+                                            color: occupiedColor,
+                                            border: Border.all(
+                                              color: borderColor,
+                                              width: borderWidth,
+                                            ),
+                                            boxShadow:
+                                                _reduceEffects || !isActiveStack
+                                                ? const <BoxShadow>[]
+                                                : [
+                                                    BoxShadow(
+                                                      color: playerColor(
+                                                        stack.ownerId,
+                                                      ).withValues(alpha: 0.35),
+                                                      blurRadius: 7,
+                                                      spreadRadius: 0.4,
+                                                    ),
+                                                  ],
+                                          ),
+                                          child: Stack(
+                                            children: [
+                                              Positioned.fill(
+                                                child: IgnorePointer(
+                                                  child: CustomPaint(
+                                                    painter: _WorldTilePainter(
+                                                      northRiver: northRiver,
+                                                      southRiver: southRiver,
+                                                      eastRiver: eastRiver,
+                                                      westRiver: westRiver,
+                                                      isBlocked: isBlocked,
+                                                      animValue:
+                                                          _riverAnimValue,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              if (territoryStatus?.frontline ??
+                                                  false)
+                                                Positioned(
+                                                  left: 3,
+                                                  top: 3,
+                                                  child: Container(
+                                                    width: 9,
+                                                    height: 9,
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                        0xFF7A1F14,
+                                                      ).withValues(alpha: 0.78),
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(
+                                                        color: const Color(
+                                                          0xFFFFE0AE,
+                                                        ),
+                                                        width: 0.8,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (onSelectedSupplyLine)
+                                                Positioned(
+                                                  left: 0,
+                                                  right: 0,
+                                                  top: 0,
+                                                  child: Center(
+                                                    child: Container(
+                                                      width: 16,
+                                                      height: 3,
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFC89E3C,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              99,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (isLegalMove && stack == null)
+                                                Center(
+                                                  child: Container(
+                                                    width: 16,
+                                                    height: 16,
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                        0xFF2F5D4E,
+                                                      ).withValues(alpha: 0.5),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (stack != null)
+                                                Center(
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(3),
+                                                    child: FittedBox(
+                                                      fit: BoxFit.scaleDown,
+                                                      child: _buildWorldStackTile(
+                                                        stack: stack,
+                                                        round: world.round,
+                                                        isActive:
+                                                            stack.ownerId ==
+                                                            world
+                                                                .activePlayerId,
+                                                        supplyReport:
+                                                            stackSupplyReport,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (stack == null &&
+                                                  (settlement != null ||
+                                                      camp != null))
+                                                Center(
+                                                  child:
+                                                      _buildWorldTileSiteSummary(
+                                                        world: world,
+                                                        settlement: settlement,
+                                                        camp: camp,
+                                                      ),
+                                                ),
+                                              if (foodTileOwner != null ||
+                                                  tilePillaged)
+                                                Positioned(
+                                                  left: 2,
+                                                  bottom: 2,
+                                                  child: _buildFoodTileMarker(
+                                                    ownerId: foodTileOwner,
+                                                    pillaged: tilePillaged,
+                                                  ),
+                                                ),
+                                              if (isLastEnemyFrom)
+                                                const Positioned(
+                                                  left: 2,
+                                                  bottom: 2,
+                                                  child: DecoratedBox(
+                                                    decoration: BoxDecoration(
+                                                      color: Color(0xFF8C6C1E),
+                                                      borderRadius:
+                                                          BorderRadius.all(
+                                                            Radius.circular(6),
+                                                          ),
+                                                    ),
+                                                    child: Padding(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                            horizontal: 3,
+                                                            vertical: 1,
+                                                          ),
+                                                      child: Text(
+                                                        'FROM',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 7,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (isLastEnemyTo)
+                                                const Positioned(
+                                                  right: 2,
+                                                  bottom: 2,
+                                                  child: DecoratedBox(
+                                                    decoration: BoxDecoration(
+                                                      color: Color(0xFFA53224),
+                                                      borderRadius:
+                                                          BorderRadius.all(
+                                                            Radius.circular(6),
+                                                          ),
+                                                    ),
+                                                    child: Padding(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                            horizontal: 3,
+                                                            vertical: 1,
+                                                          ),
+                                                      child: Text(
+                                                        'TO',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 7,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (settlement != null)
+                                                Positioned(
+                                                  top: 2,
+                                                  left: 2,
+                                                  child: _buildSettlementBadge(
+                                                    world,
+                                                    settlement,
+                                                  ),
+                                                ),
+                                              if (camp != null)
+                                                Positioned(
+                                                  top: 2,
+                                                  right: 2,
+                                                  child: _buildCampBadge(
+                                                    world,
+                                                    camp,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
                           );
@@ -6284,6 +7487,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     required bool isBlocked,
     required bool isSelected,
     required bool isLegalMove,
+    required _TerritoryTileStatus? territoryStatus,
+    required int activePlayerId,
+    required bool onSelectedSupplyLine,
   }) {
     if (isBlocked) {
       return const Color(0xFF575E66);
@@ -6294,7 +7500,27 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     if (isLegalMove) {
       return const Color(0xFFA9CF86);
     }
-    return const Color(0xFFDCC7A2);
+    final parity = (row + col).isEven;
+    var base = parity ? const Color(0xFFE5D1A9) : const Color(0xFFD8BE91);
+    final ownerId = territoryStatus?.ownerId;
+    if (ownerId != null) {
+      final alpha = territoryStatus?.contested ?? false
+          ? 0.12
+          : (territoryStatus!.depth <= 2 ? 0.22 : 0.16);
+      base = Color.alphaBlend(
+        playerColor(
+          ownerId,
+        ).withValues(alpha: ownerId == activePlayerId ? alpha + 0.05 : alpha),
+        base,
+      );
+    }
+    if (territoryStatus?.frontline ?? false) {
+      base = Color.alphaBlend(const Color(0x22A13924), base);
+    }
+    if (onSelectedSupplyLine) {
+      base = Color.alphaBlend(const Color(0x33D3AE56), base);
+    }
+    return base;
   }
 
   Color _settlementOwnerColor(int ownerId) {
@@ -6577,10 +7803,18 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     required ArmyStack stack,
     required int round,
     required bool isActive,
+    required _SupplyLineReport? supplyReport,
   }) {
     final ownerColor = playerColor(stack.ownerId);
     final ownerText = _contrastColor(ownerColor);
-    final unitSummary = _armyTileSummary(stack.army).replaceAll(', ', ' ');
+    final comp = stack.army.composition;
+    final lineState = supplyReport?.stateLabel ?? 'No line';
+    final lineColor = switch (supplyReport?.state ??
+        _SupplyLineState.isolated) {
+      _SupplyLineState.secure => const Color(0xFF295D46),
+      _SupplyLineState.stretched => const Color(0xFF8A6218),
+      _SupplyLineState.isolated => const Color(0xFF8E2E22),
+    };
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: isActive ? 0.9 : 0.8),
@@ -6640,16 +7874,59 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 1),
-            FittedBox(
-              fit: BoxFit.scaleDown,
+            const SizedBox(height: 2),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _formationPip(
+                  label: 'P',
+                  count: comp.pawns,
+                  color: const Color(0xFF7A2A1A),
+                ),
+                const SizedBox(width: 2),
+                _formationPip(
+                  label: 'R',
+                  count: comp.rooks,
+                  color: const Color(0xFF4D3825),
+                ),
+                const SizedBox(width: 2),
+                _formationPip(
+                  label: 'N',
+                  count: comp.knights,
+                  color: const Color(0xFF906B1E),
+                ),
+                const SizedBox(width: 2),
+                _formationPip(
+                  label: 'B',
+                  count: comp.bishops,
+                  color: const Color(0xFF355E63),
+                ),
+                const SizedBox(width: 2),
+                _formationPip(
+                  label: 'G',
+                  count: comp.generals,
+                  color: const Color(0xFF2D2D2D),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: lineColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(
+                  color: lineColor.withValues(alpha: 0.44),
+                  width: 0.8,
+                ),
+              ),
               child: Text(
-                unitSummary,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 10.2,
+                lineState,
+                style: TextStyle(
+                  fontSize: 8.4,
+                  height: 1,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF1D2522),
+                  color: lineColor,
                 ),
               ),
             ),
@@ -6679,6 +7956,73 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _formationPip({
+    required String label,
+    required int count,
+    required Color color,
+  }) {
+    return Container(
+      width: 16,
+      height: 16,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: count > 0 ? 0.9 : 0.18),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        count > 0 ? '$label$count' : label,
+        style: TextStyle(
+          fontSize: count > 0 ? 7.2 : 7.8,
+          height: 1,
+          fontWeight: FontWeight.w900,
+          color: count > 0 ? Colors.white : const Color(0xFF6A5B45),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupplyLineBanner(_SupplyLineReport report) {
+    final (color, icon) = switch (report.state) {
+      _SupplyLineState.secure => (const Color(0xFF295D46), Icons.route_rounded),
+      _SupplyLineState.stretched => (
+        const Color(0xFF8A6218),
+        Icons.timeline_rounded,
+      ),
+      _SupplyLineState.isolated => (
+        const Color(0xFF8E2E22),
+        Icons.warning_amber_rounded,
+      ),
+    };
+    final detail = report.anchor == null
+        ? 'No friendly anchor'
+        : '${report.anchor!.label} • ${report.distance} step(s)';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.36)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '${report.stateLabel} • $detail',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -6727,6 +8071,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       'CP ${_commandPointsForPlayer(world, world.activePlayerId)} • Food ${_foodForPlayer(world, world.activePlayerId)}',
       'Settlements ${world.settlements.length} • Camps $campCount • Outposts $outpostCount',
       'Turn marker: active-player armies glow and show lightning icon.',
+      'Blue borders are rivers between tiles. Only fords and bridges cross them.',
+      'Armies need water sooner than food. Riverbank camps are strong staging positions.',
       'Field markers: grass = secured food tile, flame = pillaged tile.',
       'Codes: P pawn, R rook, N knight, B bishop, G general',
       'General traits: FLD field, VET veteran, DRM drummer, FRG fragile',
@@ -6854,9 +8200,17 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                   tooltip:
                       'Reserve food. Armies now also depend on local supply at tile level.',
                 ),
+                if (selectedOwnedStack != null)
+                  _worldHudPill(
+                    icon: Icons.water_drop_rounded,
+                    value:
+                        '${_stackWater(selectedOwnedStack.id)} ${_waterStateLabel(_stackWater(selectedOwnedStack.id), _stackThirst(selectedOwnedStack.id))}',
+                    tooltip:
+                        'Selected army water state. Thirst rises faster than hunger when you march away from rivers, crossings, settlements, and camps.',
+                  ),
                 _worldHudPill(
                   icon: Icons.fort_rounded,
-                  value: 'Establish Camp (-1 food)',
+                  value: 'Raise Camp (-1 food)',
                   tooltip:
                       'Create a temporary camp on your selected army tile.',
                   onTap: canEstablishCamp ? _establishCamp : null,
@@ -6899,7 +8253,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                 ),
                 _worldHudPill(
                   icon: Icons.skip_next_rounded,
-                  value: 'Pass Turn',
+                  value: 'End Turn',
                   tooltip: 'End your turn now.',
                   onTap: activeIsAi || _aiBusy ? null : _passWorldTurn,
                 ),
@@ -7024,9 +8378,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
-        color: enabled ? const Color(0xFFEAF2FF) : const Color(0xFFF2F2F2),
+        color: enabled ? const Color(0xFFF3E6C8) : const Color(0xFFE3DDD1),
         border: Border.all(
-          color: enabled ? const Color(0xFF92AED4) : const Color(0xFFC4C4C4),
+          color: enabled ? const Color(0xFF8B6E46) : const Color(0xFFB4AA93),
         ),
       ),
       child: Row(
@@ -7035,7 +8389,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           Icon(
             icon,
             size: 15,
-            color: enabled ? const Color(0xFF295C95) : const Color(0xFF6B6B6B),
+            color: enabled ? const Color(0xFF674B22) : const Color(0xFF6B6B6B),
           ),
           const SizedBox(width: 4),
           Flexible(
@@ -7047,7 +8401,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                 fontSize: 11.2,
                 fontWeight: FontWeight.w800,
                 color: enabled
-                    ? const Color(0xFF1E3E64)
+                    ? const Color(0xFF3C2D16)
                     : const Color(0xFF555555),
               ),
             ),
@@ -7085,6 +8439,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
   }) {
     final supply = _stackSupply(stack.id);
     final starvation = _stackStarvation(stack.id);
+    final water = _stackWater(stack.id);
+    final thirst = _stackThirst(stack.id);
+    final supplyReport = _supplyLineReport(world, stack);
     final tileOwner = _foodTileOwnerByPosition[stack.position];
     final tilePillaged =
         (_pillagedTileUntilRound[stack.position] ?? 0) >= world.round;
@@ -7095,6 +8452,23 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               : (tileOwner == stack.ownerId
                     ? 'Tile status: secured food tile for Player ${stack.ownerId + 1}.'
                     : 'Tile status: enemy-controlled food tile (Player ${tileOwner + 1}).'));
+    final waterLine = _waterAccessLabel(world, stack.position);
+    final supplyLineText = switch (supplyReport.state) {
+      _SupplyLineState.secure =>
+        'Supply line secure from ${supplyReport.anchor?.label ?? 'friendly territory'} in ${supplyReport.distance} march(es).',
+      _SupplyLineState.stretched =>
+        'Supply line stretched from ${supplyReport.anchor?.label ?? 'friendly territory'}: ${supplyReport.distance} march(es), ${supplyReport.dangerSteps} exposed segment(s).',
+      _SupplyLineState.isolated =>
+        'Cut off from friendly magazines. This army is living off the land.',
+    };
+    final forageLine = switch (supplyReport.state) {
+      _SupplyLineState.secure =>
+        'Foraging is supplementary. Protect crossings and do not overextend the baggage route.',
+      _SupplyLineState.stretched =>
+        'Foraging under pressure is risky. Enemy contact along the route can turn hunger into fatigue fast.',
+      _SupplyLineState.isolated =>
+        'Foraging is now desperate and dangerous. Expect fatigue, thirst, and stragglers if you stay cut off.',
+    };
 
     return KeyedSubtree(
       key: ValueKey<String>('stack-${stack.id}'),
@@ -7102,7 +8476,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Army Actions',
+            'March Orders',
             style: TextStyle(
               fontWeight: FontWeight.w800,
               color: playerColor(stack.ownerId),
@@ -7113,10 +8487,34 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
             'Tile (${stack.position.row},${stack.position.col}) • '
             'Supply $supply (${_supplyStateLabel(supply, starvation)})',
           ),
+          const SizedBox(height: 4),
+          _buildSupplyLineBanner(supplyReport),
+          const SizedBox(height: 2),
+          Text(
+            'Water $water (${_waterStateLabel(water, thirst)})',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: thirst >= 2
+                  ? const Color(0xFF8C2E1F)
+                  : const Color(0xFF225B73),
+            ),
+          ),
           const SizedBox(height: 2),
           Text(
             tileFoodLine,
             style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            supplyLineText,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 2),
+          Text(waterLine, style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Text(
+            forageLine,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF604B2A)),
           ),
           if (selectedSettlement != null) ...[
             const SizedBox(height: 2),
@@ -7190,21 +8588,21 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                         settlement: selectedSettlement,
                       )
                     : null,
-                icon: const Icon(Icons.account_balance_rounded),
-                label: const Text('Town Ops'),
+                icon: const Icon(Icons.menu_book_rounded),
+                label: const Text('Settlement'),
               ),
               FilledButton.tonalIcon(
                 onPressed: () =>
                     _showStackIntelSheet(world: world, stack: stack),
                 icon: const Icon(Icons.info_outline_rounded),
-                label: const Text('Intel'),
+                label: const Text('Details'),
               ),
             ],
           ),
           if (!canUseSettlementActions && selectedSettlement != null) ...[
             const SizedBox(height: 6),
             const Text(
-              'Town Ops require your selected army on the same owned settlement tile.',
+              'Settlement actions require your selected army to stand on this owned settlement.',
             ),
           ],
         ],
@@ -7276,15 +8674,15 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                 onPressed: canSelectOwnStack
                     ? () => _showSettlementActionsSheet(settlement: settlement)
                     : null,
-                icon: const Icon(Icons.account_balance_rounded),
-                label: const Text('Town Ops'),
+                icon: const Icon(Icons.menu_book_rounded),
+                label: const Text('Settlement'),
               ),
             ],
           ),
           if (!canSelectOwnStack) ...[
             const SizedBox(height: 6),
             const Text(
-              'To use settlement actions, station and select your army on this tile.',
+              'To use settlement actions, move and select your army on this tile.',
             ),
           ],
         ],
@@ -7298,20 +8696,21 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Select a Unit or Town',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
+          Text('How To Start', style: TextStyle(fontWeight: FontWeight.w800)),
           SizedBox(height: 6),
-          Text('Tap your army to move and open army actions.'),
-          SizedBox(height: 2),
-          Text('Tap a town/city to inspect tax, harvest, and defense values.'),
-          SizedBox(height: 2),
           Text(
-            'Field markers: grass = secured food tile, flame = pillaged tile.',
+            'Tap one of your armies first. That opens movement and camp orders.',
           ),
           SizedBox(height: 2),
-          Text('Only selected armies show full unit composition in the HUD.'),
+          Text(
+            'Look for rivers and crossings. Armies that camp on water stay steadier before battle.',
+          ),
+          SizedBox(height: 2),
+          Text(
+            'Tap a settlement to inspect taxes, harvest, defense, and levy readiness.',
+          ),
+          SizedBox(height: 2),
+          Text('Field markers: grass = secured food, flame = pillaged ground.'),
         ],
       ),
     );
@@ -7335,7 +8734,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         return SafeArea(
           child: SizedBox(
             height: maxHeight,
-            child: SingleChildScrollView(
+            child: Padding(
               padding: const EdgeInsets.all(10),
               child: _foodStatusCard(projection),
             ),
@@ -7388,7 +8787,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     if (!mounted) {
       return;
     }
-    final entries = world.log.reversed.take(32).toList(growable: false);
+    final entries = world.log.reversed.take(10).toList(growable: false);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -7401,6 +8800,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           child: SizedBox(
             height: maxHeight,
             child: ListView.builder(
+              physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.all(10),
               itemCount: entries.length + 1,
               itemBuilder: (context, index) {
@@ -7446,7 +8846,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         return SafeArea(
           child: SizedBox(
             height: maxHeight,
-            child: SingleChildScrollView(
+            child: Padding(
               padding: const EdgeInsets.all(10),
               child: _selectedStackCard(world: world, stack: stack),
             ),
@@ -7688,7 +9088,12 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
             IconButton(
               tooltip: 'Session',
               onPressed: _showSessionMenu,
-              icon: const Icon(Icons.pause_circle_filled_rounded),
+              icon: const Icon(Icons.shield_rounded),
+            ),
+            IconButton(
+              tooltip: 'War Lab',
+              onPressed: _showWarLabSheet,
+              icon: const Icon(Icons.bug_report_rounded),
             ),
             IconButton(
               tooltip: 'Field Manual',
@@ -7821,153 +9226,157 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         .take(10)
         .toList(growable: false);
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Text(
-                'Active side: Player ${battle.activePlayer + 1} (${activeType == PlayerType.human ? 'Human' : 'AI'})',
-                style: theme.textTheme.titleSmall,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Text(
+              'Active side: Player ${battle.activePlayer + 1} (${activeType == PlayerType.human ? 'Human' : 'AI'})',
+              style: theme.textTheme.titleSmall,
             ),
           ),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Morale', style: theme.textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  _moraleLine(
-                    label: 'Player ${session.attackerStack.ownerId + 1}',
-                    morale: battle.moraleForPlayer(
-                      session.attackerStack.ownerId,
-                    ),
-                    moraleState: battle.moraleStateForPlayer(
-                      session.attackerStack.ownerId,
-                    ),
-                    maxMorale: battle.maxMorale,
-                    color: playerColor(session.attackerStack.ownerId),
-                    trendDelta: attackerMoraleDelta,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Morale', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 6),
+                _moraleLine(
+                  label: 'Player ${session.attackerStack.ownerId + 1}',
+                  morale: battle.moraleForPlayer(session.attackerStack.ownerId),
+                  moraleState: battle.moraleStateForPlayer(
+                    session.attackerStack.ownerId,
                   ),
-                  const SizedBox(height: 4),
-                  _moraleLine(
-                    label: 'Player ${session.defenderStack.ownerId + 1}',
-                    morale: battle.moraleForPlayer(
-                      session.defenderStack.ownerId,
-                    ),
-                    moraleState: battle.moraleStateForPlayer(
-                      session.defenderStack.ownerId,
-                    ),
-                    maxMorale: battle.maxMorale,
-                    color: playerColor(session.defenderStack.ownerId),
-                    trendDelta: defenderMoraleDelta,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          _commandCard(session),
-          const SizedBox(height: 8),
-          _decisiveSignalsCard(session),
-          const SizedBox(height: 8),
-          if (activeIsHuman)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: battle.canAdvanceFrontline()
-                          ? () => _advanceFrontline()
-                          : null,
-                      icon: const Icon(Icons.trending_up_rounded),
-                      label: const Text('Contact Advance'),
-                    ),
-                    FilledButton.icon(
-                      onPressed: battle.canUseGeneralAdvanceSkill()
-                          ? () => _useGeneralAdvanceSkill()
-                          : null,
-                      icon: const Icon(Icons.bolt_rounded),
-                      label: const Text('High Command'),
-                    ),
-                  ],
+                  maxMorale: battle.maxMorale,
+                  color: playerColor(session.attackerStack.ownerId),
+                  trendDelta: attackerMoraleDelta,
                 ),
-              ),
+                const SizedBox(height: 4),
+                _moraleLine(
+                  label: 'Player ${session.defenderStack.ownerId + 1}',
+                  morale: battle.moraleForPlayer(session.defenderStack.ownerId),
+                  moraleState: battle.moraleStateForPlayer(
+                    session.defenderStack.ownerId,
+                  ),
+                  maxMorale: battle.maxMorale,
+                  color: playerColor(session.defenderStack.ownerId),
+                  trendDelta: defenderMoraleDelta,
+                ),
+              ],
             ),
-          const SizedBox(height: 8),
-          _battleArmyCard(
-            'Attacker',
-            session.attackerStack.army,
-            session.attackerStack.ownerId,
-            battle,
           ),
-          _battleArmyCard(
-            'Defender',
-            session.defenderStack.army,
-            session.defenderStack.ownerId,
-            battle,
-          ),
-          const SizedBox(height: 8),
+        ),
+        const SizedBox(height: 8),
+        _commandCard(session),
+        const SizedBox(height: 8),
+        _decisiveSignalsCard(session),
+        const SizedBox(height: 8),
+        if (activeIsHuman)
           Card(
             child: Padding(
               padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Text('Last Turns', style: theme.textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  SizedBox(
-                    height: 170,
-                    child: Scrollbar(
-                      child: ListView.builder(
-                        itemCount: recentBattleEvents.length,
-                        itemBuilder: (context, index) {
-                          final event = recentBattleEvents[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 4,
-                            ),
-                            child: Text(
-                              '[T${event.turn}] ${event.description}',
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                  FilledButton.icon(
+                    onPressed: battle.canCharge() ? () => _useCharge() : null,
+                    icon: const Icon(Icons.speed_rounded),
+                    label: const Text('Charge'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: battle.canDefend() ? () => _useDefend() : null,
+                    icon: const Icon(Icons.shield_rounded),
+                    label: const Text('Defend'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: battle.canAdvanceFrontline()
+                        ? () => _advanceFrontline()
+                        : null,
+                    icon: const Icon(Icons.trending_up_rounded),
+                    label: const Text('Contact Advance'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: battle.canUseGeneralAdvanceSkill()
+                        ? () => _useGeneralAdvanceSkill()
+                        : null,
+                    icon: const Icon(Icons.bolt_rounded),
+                    label: const Text('High Command'),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Text(
-                'How Battle Works:\n'
-                '- Pawns move forward 1; from the opening row they may move 2 if clear.\n'
-                '- Generals move one square in any direction.\n'
-                '- Contact Advance triggers direct front-line clashes.\n'
-                '- Low morale can force retreat, desertion, or a late rally.\n'
-                '- Fragile generals may cause panic retreat if threatened.\n'
-                '- Veteran/War Drummer generals unlock stronger command surges.\n'
-                '- You lose if all generals fall or morale fully collapses.',
-                style: theme.textTheme.bodyMedium,
-              ),
+        const SizedBox(height: 8),
+        _battleArmyCard(
+          'Attacker',
+          session.attackerStack.army,
+          session.attackerStack.ownerId,
+          battle,
+        ),
+        _battleArmyCard(
+          'Defender',
+          session.defenderStack.army,
+          session.defenderStack.ownerId,
+          battle,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Last Turns', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 170,
+                  child: Scrollbar(
+                    child: ListView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: recentBattleEvents.length,
+                      itemBuilder: (context, index) {
+                        final event = recentBattleEvents[index];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 4,
+                          ),
+                          child: Text('[T${event.turn}] ${event.description}'),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Text(
+              'How Battle Works:\n'
+              '- Pawns move forward 1; from the opening row they may move 2 if clear.\n'
+              '- If the file ahead is blocked, a pawn can sidestep one square.\n'
+              '- Generals move one square in any direction.\n'
+              '- Contact Advance triggers direct front-line clashes.\n'
+              '- Low morale can force retreat, desertion, or a late rally.\n'
+              '- Fragile generals may cause panic retreat if threatened.\n'
+              '- Veteran/War Drummer generals unlock stronger command surges.\n'
+              '- You lose if all generals fall or morale fully collapses.',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -8315,6 +9724,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final ownerProjection = _foodProjectionForPlayer(world, stack.ownerId);
     final stackSupply = _stackSupply(stack.id);
     final stackStarvation = _stackStarvation(stack.id);
+    final stackWater = _stackWater(stack.id);
+    final stackThirst = _stackThirst(stack.id);
     final enemyPressure = _enemyPressureAt(
       world,
       stack.position,
@@ -8427,6 +9838,12 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               'Army supply $stackSupply (${_supplyStateLabel(stackSupply, stackStarvation)})'
               '${stackStarvation > 0 ? ' • Starvation $stackStarvation' : ''}.',
             ),
+            const SizedBox(height: 2),
+            Text(
+              'Army water $stackWater (${_waterStateLabel(stackWater, stackThirst)})'
+              '${stackThirst > 0 ? ' • Thirst $stackThirst' : ''}. '
+              '${_waterAccessLabel(world, stack.position)}.',
+            ),
             if (ownerProjection.shortageStacks > 0)
               Text(
                 'Shortage warning: ${ownerProjection.shortageStacks} stack(s) may be unsupplied next upkeep.',
@@ -8494,7 +9911,19 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final activeOwner = stack.ownerId == activePlayerId;
     final supply = _stackSupply(stack.id);
     final starvation = _stackStarvation(stack.id);
+    final water = _stackWater(stack.id);
+    final thirst = _stackThirst(stack.id);
     final supplyState = _supplyStateLabel(supply, starvation);
+    final waterState = _waterStateLabel(water, thirst);
+    final lineReport = _world == null
+        ? const _SupplyLineReport(
+            state: _SupplyLineState.isolated,
+            path: <BoardPosition>[],
+            distance: 99,
+            dangerSteps: 0,
+            anchor: null,
+          )
+        : _supplyLineReport(_world!, stack);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -8548,6 +9977,30 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                       color: starvation >= 2
                           ? const Color(0xFF8C2E1F)
                           : const Color(0xFF28473E),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Water: $water ($waterState)'
+                    '${thirst > 0 ? ' • Thirst $thirst' : ''}',
+                    style: TextStyle(
+                      color: thirst >= 2
+                          ? const Color(0xFF8C2E1F)
+                          : const Color(0xFF225B73),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Line: ${lineReport.stateLabel}'
+                    '${lineReport.anchor == null ? '' : ' via ${lineReport.anchor!.label}'}',
+                    style: TextStyle(
+                      color: switch (lineReport.state) {
+                        _SupplyLineState.secure => const Color(0xFF295D46),
+                        _SupplyLineState.stretched => const Color(0xFF8A6218),
+                        _SupplyLineState.isolated => const Color(0xFF8E2E22),
+                      },
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -8617,6 +10070,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     if (stack.fatigue > 0) {
       drivers.add('fatigue ${stack.fatigue}');
     }
+    if (_stackThirst(stack.id) > 0 || _stackWater(stack.id) <= 1) {
+      drivers.add('water strain');
+    }
     if (ownerFood <= 1) {
       drivers.add('low food reserve');
     }
@@ -8660,6 +10116,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     }
     if (stack.fatigue > 0) {
       score += stack.fatigue;
+    }
+    if (_stackThirst(stack.id) > 0 || _stackWater(stack.id) <= 1) {
+      score += 2;
     }
     if (ownerFood <= 1) {
       score += 1;
@@ -8816,22 +10275,35 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                               Row(
                                 children: [
                                   Icon(
-                                    winnerId == null
-                                        ? Icons.balance_rounded
-                                        : Icons.military_tech_rounded,
-                                    color: accent,
-                                  ),
+                                        winnerId == null
+                                            ? Icons.balance_rounded
+                                            : Icons.military_tech_rounded,
+                                        color: accent,
+                                      )
+                                      .animate(onPlay: (c) => c.repeat())
+                                      .shimmer(
+                                        duration: 1200.ms,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.4,
+                                        ),
+                                      ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: Text(
-                                      winnerText,
-                                      style: theme.textTheme.headlineMedium
-                                          ?.copyWith(
-                                            color: accent,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 1,
-                                          ),
-                                    ),
+                                    child:
+                                        Text(
+                                              winnerText,
+                                              style: theme
+                                                  .textTheme
+                                                  .headlineMedium
+                                                  ?.copyWith(
+                                                    color: accent,
+                                                    fontWeight: FontWeight.w800,
+                                                    letterSpacing: 1,
+                                                  ),
+                                            )
+                                            .animate()
+                                            .fadeIn(duration: 600.ms)
+                                            .slideX(begin: 0.1),
                                   ),
                                 ],
                               ),
@@ -8871,27 +10343,35 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                                 ),
                               const SizedBox(height: 14),
                               Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  FilledButton.icon(
-                                    onPressed: () =>
-                                        _startMatch(forcedSeed: _seed),
-                                    icon: const Icon(Icons.refresh_rounded),
-                                    label: const Text('Rematch'),
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      FilledButton.icon(
+                                        onPressed: () =>
+                                            _startMatch(forcedSeed: _seed),
+                                        icon: const Icon(Icons.refresh_rounded),
+                                        label: const Text('Rematch'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: () => _startMatch(),
+                                        icon: const Icon(Icons.casino_rounded),
+                                        label: const Text('New Match'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: _backToSetup,
+                                        icon: const Icon(
+                                          Icons.arrow_back_rounded,
+                                        ),
+                                        label: const Text('Main Menu'),
+                                      ),
+                                    ],
+                                  )
+                                  .animate()
+                                  .fadeIn(delay: 400.ms)
+                                  .slideY(
+                                    begin: 0.2,
+                                    curve: Curves.easeOutBack,
                                   ),
-                                  OutlinedButton.icon(
-                                    onPressed: () => _startMatch(),
-                                    icon: const Icon(Icons.casino_rounded),
-                                    label: const Text('New Match'),
-                                  ),
-                                  OutlinedButton.icon(
-                                    onPressed: _backToSetup,
-                                    icon: const Icon(Icons.arrow_back_rounded),
-                                    label: const Text('Main Menu'),
-                                  ),
-                                ],
-                              ),
                             ],
                           ),
                         ),
@@ -8915,6 +10395,412 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         return 'Tight Ravine';
       case MapPreset.brokenGround:
         return 'Broken Ground';
+      case MapPreset.riverlands:
+        return 'Riverlands';
+      case MapPreset.mountainPass:
+        return 'Mountain Pass';
+      case MapPreset.coastalCliffs:
+        return 'Coastal Cliffs';
+      case MapPreset.ancientRuins:
+        return 'Ancient Ruins';
+      case MapPreset.desertOasis:
+        return 'Desert Oasis';
     }
   }
 }
+
+class _WorldTilePainter extends CustomPainter {
+  const _WorldTilePainter({
+    required this.northRiver,
+    required this.southRiver,
+    required this.eastRiver,
+    required this.westRiver,
+    required this.isBlocked,
+    required this.animValue,
+  });
+
+  final RiverEdgeType? northRiver;
+  final RiverEdgeType? southRiver;
+  final RiverEdgeType? eastRiver;
+  final RiverEdgeType? westRiver;
+  final bool isBlocked;
+  final double animValue;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (isBlocked) {
+      return;
+    }
+
+    final washPaint = Paint()
+      ..color = const Color(0x14FFF8E5)
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(Offset.zero & size, washPaint);
+
+    _paintEdge(canvas, size, northRiver, _TileEdge.north);
+    _paintEdge(canvas, size, southRiver, _TileEdge.south);
+    _paintEdge(canvas, size, eastRiver, _TileEdge.east);
+    _paintEdge(canvas, size, westRiver, _TileEdge.west);
+  }
+
+  void _paintEdge(
+    Canvas canvas,
+    Size size,
+    RiverEdgeType? river,
+    _TileEdge edge,
+  ) {
+    if (river == null) {
+      return;
+    }
+
+    final isHorizontal = edge == _TileEdge.north || edge == _TileEdge.south;
+    final stroke = math.max(6.0, size.shortestSide * 0.22);
+    final bankStroke = stroke * 1.3;
+    final padding = stroke * 0.3;
+
+    final (start, end) = switch (edge) {
+      _TileEdge.north => (Offset(0, padding), Offset(size.width, padding)),
+      _TileEdge.south => (
+        Offset(0, size.height - padding),
+        Offset(size.width, size.height - padding),
+      ),
+      _TileEdge.east => (
+        Offset(size.width - padding, 0),
+        Offset(size.width - padding, size.height),
+      ),
+      _TileEdge.west => (Offset(padding, 0), Offset(padding, size.height)),
+    };
+
+    // Draw Bank (Mud/Grass edge)
+    final bankPaint = Paint()
+      ..color = const Color(0xFF3D2B1F).withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = bankStroke
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0)
+      ..strokeCap = StrokeCap.square;
+
+    canvas.drawLine(start, end, bankPaint);
+
+    // Draw Water with organic curve
+    final waterPath = Path();
+    waterPath.moveTo(start.dx, start.dy);
+
+    final mid = Offset((start.dx + end.dx) / 2, (start.dy + end.dy) / 2);
+    final waveOffset = math.sin(animValue * 4 + (edge.index * 1.5)) * 3.0;
+
+    if (isHorizontal) {
+      waterPath.quadraticBezierTo(mid.dx, mid.dy + waveOffset, end.dx, end.dy);
+    } else {
+      waterPath.quadraticBezierTo(mid.dx + waveOffset, mid.dy, end.dx, end.dy);
+    }
+
+    final riverPaint = Paint()
+      ..shader = LinearGradient(
+        begin: isHorizontal ? Alignment.topCenter : Alignment.centerLeft,
+        end: isHorizontal ? Alignment.bottomCenter : Alignment.centerRight,
+        colors: [
+          const Color(0xFF2E5A88),
+          const Color(0xFF4E89AE),
+          const Color(0xFF2E5A88),
+        ],
+      ).createShader(Rect.fromPoints(start, end))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawPath(waterPath, riverPaint);
+
+    // Highlight/Ripples
+    if (river == RiverEdgeType.river) {
+      final ripplePaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.15)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..strokeCap = StrokeCap.round;
+
+      for (var i = 0; i < 3; i++) {
+        final phase = (animValue + (i * 0.33)) % 1.0;
+        final ripplePos = phase * size.shortestSide;
+
+        if (isHorizontal) {
+          canvas.drawLine(
+            Offset(ripplePos, start.dy - 2),
+            Offset(ripplePos + 12, start.dy - 2),
+            ripplePaint,
+          );
+        } else {
+          canvas.drawLine(
+            Offset(start.dx - 2, ripplePos),
+            Offset(start.dx - 2, ripplePos + 12),
+            ripplePaint,
+          );
+        }
+      }
+    }
+
+    final center = Offset((start.dx + end.dx) / 2, (start.dy + end.dy) / 2);
+    final accentPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = stroke * 0.6;
+
+    switch (river) {
+      case RiverEdgeType.river:
+        break;
+      case RiverEdgeType.ford:
+        accentPaint.color = const Color(0xFFC2B280);
+        accentPaint.strokeWidth = stroke * 0.8;
+        _drawCrossing(canvas, center, isHorizontal, stroke, accentPaint);
+      case RiverEdgeType.bridge:
+        accentPaint.color = const Color(0xFF4A3728);
+        accentPaint.strokeWidth = stroke * 1.1;
+        _drawCrossing(
+          canvas,
+          center,
+          isHorizontal,
+          stroke,
+          accentPaint,
+          isBridge: true,
+        );
+    }
+  }
+
+  void _drawCrossing(
+    Canvas canvas,
+    Offset center,
+    bool isHorizontal,
+    double stroke,
+    Paint paint, {
+    bool isBridge = false,
+  }) {
+    if (isHorizontal) {
+      canvas.drawLine(
+        Offset(center.dx - stroke, center.dy),
+        Offset(center.dx + stroke, center.dy),
+        paint,
+      );
+      if (isBridge) {
+        // Railings
+        final railPaint = Paint()
+          ..color = Colors.black26
+          ..strokeWidth = 1.0;
+        canvas.drawLine(
+          Offset(center.dx - stroke, center.dy - 4),
+          Offset(center.dx + stroke, center.dy - 4),
+          railPaint,
+        );
+        canvas.drawLine(
+          Offset(center.dx - stroke, center.dy + 4),
+          Offset(center.dx + stroke, center.dy + 4),
+          railPaint,
+        );
+      }
+    } else {
+      canvas.drawLine(
+        Offset(center.dx, center.dy - stroke),
+        Offset(center.dx, center.dy + stroke),
+        paint,
+      );
+      if (isBridge) {
+        final railPaint = Paint()
+          ..color = Colors.black26
+          ..strokeWidth = 1.0;
+        canvas.drawLine(
+          Offset(center.dx - 4, center.dy - stroke),
+          Offset(center.dx - 4, center.dy + stroke),
+          railPaint,
+        );
+        canvas.drawLine(
+          Offset(center.dx + 4, center.dy - stroke),
+          Offset(center.dx + 4, center.dy + stroke),
+          railPaint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WorldTilePainter oldDelegate) {
+    return northRiver != oldDelegate.northRiver ||
+        southRiver != oldDelegate.southRiver ||
+        eastRiver != oldDelegate.eastRiver ||
+        westRiver != oldDelegate.westRiver ||
+        isBlocked != oldDelegate.isBlocked ||
+        animValue != oldDelegate.animValue;
+  }
+}
+
+class _WorldCampaignOverlayPainter extends CustomPainter {
+  const _WorldCampaignOverlayPainter({
+    required this.world,
+    required this.territoryByPosition,
+    required this.selectedSupplyLine,
+    required this.highlightedOwnerId,
+    required this.reduceEffects,
+  });
+
+  final WorldState world;
+  final Map<BoardPosition, _TerritoryTileStatus> territoryByPosition;
+  final List<BoardPosition> selectedSupplyLine;
+  final int? highlightedOwnerId;
+  final bool reduceEffects;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (world.size <= 0) {
+      return;
+    }
+
+    final cellWidth = size.width / world.size;
+    final cellHeight = size.height / world.size;
+
+    final parchmentBands = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0x0FFAF3E3), Color(0x00F2E2BF), Color(0x12D6B98B)],
+        stops: [0.0, 0.45, 1.0],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, parchmentBands);
+
+    final contourPaint = Paint()
+      ..color = const Color(0xFF7D6A4C).withValues(alpha: 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    for (var row = 0; row < world.size; row++) {
+      final y = (row + 0.5) * cellHeight;
+      final path = Path()
+        ..moveTo(0, y)
+        ..quadraticBezierTo(
+          size.width * 0.33,
+          y + ((row.isEven ? 1 : -1) * cellHeight * 0.12),
+          size.width,
+          y,
+        );
+      canvas.drawPath(path, contourPaint);
+    }
+
+    for (final entry in territoryByPosition.entries) {
+      final ownerId = entry.value.ownerId;
+      if (ownerId == null) {
+        continue;
+      }
+      final position = entry.key;
+      final left = position.col * cellWidth;
+      final top = position.row * cellHeight;
+      final rect = Rect.fromLTWH(
+        left + 2,
+        top + 2,
+        cellWidth - 4,
+        cellHeight - 4,
+      );
+      final fill = Paint()
+        ..color = playerColor(ownerId).withValues(
+          alpha: entry.value.contested
+              ? 0.1
+              : (entry.value.depth <= 2 ? 0.2 : 0.12),
+        )
+        ..style = PaintingStyle.fill;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+        fill,
+      );
+
+      if (entry.value.frontline) {
+        final dashPaint = Paint()
+          ..color = const Color(0xFF73411E).withValues(alpha: 0.42)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.3
+          ..strokeCap = StrokeCap.round;
+        final midY = rect.center.dy;
+        for (var i = 0; i < 3; i++) {
+          final startX = rect.left + 5 + (i * ((rect.width - 10) / 3));
+          canvas.drawLine(
+            Offset(startX, midY - 4),
+            Offset(startX + 6, midY + 4),
+            dashPaint,
+          );
+        }
+      }
+    }
+
+    if (selectedSupplyLine.length >= 2) {
+      final routePoints = selectedSupplyLine
+          .map(
+            (position) => Offset(
+              (position.col + 0.5) * cellWidth,
+              (position.row + 0.5) * cellHeight,
+            ),
+          )
+          .toList(growable: false);
+      final routePath = Path()
+        ..moveTo(routePoints.first.dx, routePoints.first.dy);
+      for (var i = 1; i < routePoints.length; i++) {
+        final previous = routePoints[i - 1];
+        final current = routePoints[i];
+        final mid = Offset(
+          (previous.dx + current.dx) / 2,
+          (previous.dy + current.dy) / 2,
+        );
+        routePath.quadraticBezierTo(mid.dx, mid.dy, current.dx, current.dy);
+      }
+
+      if (!reduceEffects) {
+        final glow = Paint()
+          ..color = const Color(0xFFB27E22).withValues(alpha: 0.24)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 10
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+        canvas.drawPath(routePath, glow);
+      }
+
+      final routePaint = Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [Color(0xFFF5D488), Color(0xFFB97F24)],
+        ).createShader(Offset.zero & size)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = reduceEffects ? 2.3 : 3.2
+        ..strokeCap = StrokeCap.round;
+      canvas.drawPath(routePath, routePaint);
+
+      final start = routePoints.first;
+      final end = routePoints.last;
+      final markerPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = const Color(0xFF8B2420).withValues(alpha: 0.92);
+      canvas.drawCircle(start, 4.5, markerPaint);
+      canvas.drawCircle(
+        end,
+        4.5,
+        Paint()..color = const Color(0xFF305A44).withValues(alpha: 0.92),
+      );
+    }
+
+    if (highlightedOwnerId != null) {
+      final crestPaint = Paint()
+        ..color = playerColor(highlightedOwnerId!).withValues(alpha: 0.08)
+        ..style = PaintingStyle.fill;
+      final crestPath = Path()
+        ..moveTo(size.width * 0.06, size.height * 0.12)
+        ..lineTo(size.width * 0.2, size.height * 0.08)
+        ..lineTo(size.width * 0.26, size.height * 0.22)
+        ..lineTo(size.width * 0.12, size.height * 0.26)
+        ..close();
+      canvas.drawPath(crestPath, crestPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WorldCampaignOverlayPainter oldDelegate) {
+    return oldDelegate.world != world ||
+        oldDelegate.highlightedOwnerId != highlightedOwnerId ||
+        oldDelegate.reduceEffects != reduceEffects ||
+        oldDelegate.selectedSupplyLine.length != selectedSupplyLine.length ||
+        oldDelegate.territoryByPosition.length != territoryByPosition.length;
+  }
+}
+
+enum _TileEdge { north, south, east, west }
