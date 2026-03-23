@@ -1162,6 +1162,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                           ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _presetSummary(_mapPreset),
+                      style: const TextStyle(color: Color(0xFF5E503E)),
+                    ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
@@ -6396,6 +6401,13 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _presetSummary(_mapPreset),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: const Color(0xFF5E503E),
+                          ),
+                        ),
                         const SizedBox(height: 10),
                         DropdownButtonFormField<AiDifficulty>(
                           initialValue: _aiDifficulty,
@@ -8072,6 +8084,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       'Settlements ${world.settlements.length} • Camps $campCount • Outposts $outpostCount',
       'Turn marker: active-player armies glow and show lightning icon.',
       'Blue borders are rivers between tiles. Only fords and bridges cross them.',
+      'Territory wash shows who can realistically feed this ground. Red dots mark front lines.',
+      'Gold bars trace the selected army supply line back to its nearest friendly magazine.',
       'Armies need water sooner than food. Riverbank camps are strong staging positions.',
       'Field markers: grass = secured food tile, flame = pillaged tile.',
       'Codes: P pawn, R rook, N knight, B bishop, G general',
@@ -8699,18 +8713,20 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           Text('How To Start', style: TextStyle(fontWeight: FontWeight.w800)),
           SizedBox(height: 6),
           Text(
-            'Tap one of your armies first. That opens movement and camp orders.',
+            'Tap one of your armies first. That opens movement, camp, and supply orders.',
           ),
           SizedBox(height: 2),
           Text(
-            'Look for rivers and crossings. Armies that camp on water stay steadier before battle.',
+            'Blue rivers and crossings shape the campaign. Armies that camp on water stay steadier before battle.',
           ),
           SizedBox(height: 2),
           Text(
-            'Tap a settlement to inspect taxes, harvest, defense, and levy readiness.',
+            'Territory wash shows who can feed the ground. Gold route markers show the selected army line.',
           ),
           SizedBox(height: 2),
-          Text('Field markers: grass = secured food, flame = pillaged ground.'),
+          Text(
+            'Tap settlements for tax, harvest, defense, and levies. Grass marks food, flame marks pillage.',
+          ),
         ],
       ),
     );
@@ -9043,11 +9059,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
             const SizedBox(height: 3),
             Text(
               food <= 0
-                  ? 'Food: $food (Empty)'
-                  : (food == 1 ? 'Food: $food (Low)' : 'Food: $food'),
+                  ? 'Granaries: $food (Empty)'
+                  : (food == 1 ? 'Granaries: $food (Low)' : 'Granaries: $food'),
             ),
             const SizedBox(height: 2),
-            Text('Coin Stores: $treasury'),
+            Text('War Chest: $treasury'),
             const SizedBox(height: 3),
             Container(
               height: 2,
@@ -10405,6 +10421,27 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         return 'Ancient Ruins';
       case MapPreset.desertOasis:
         return 'Desert Oasis';
+    }
+  }
+
+  String _presetSummary(MapPreset preset) {
+    switch (preset) {
+      case MapPreset.greatField:
+        return 'Broad marching room and clean battle lines. Best baseline for reading formations and supply routes.';
+      case MapPreset.tightRavine:
+        return 'Constricted movement and brutal choke fights. Good for testing how much the square theater can be broken up.';
+      case MapPreset.brokenGround:
+        return 'Disrupted lanes and jagged approach paths. Useful when judging whether armies still read clearly in messy terrain.';
+      case MapPreset.riverlands:
+        return 'Closest to a Caesar-in-Gaul campaigning feel: crossings, riverbanks, and supply pressure around the water line.';
+      case MapPreset.mountainPass:
+        return 'Long, narrow advance with strong defensive leverage. Good for siege-road and baggage-train pressure.';
+      case MapPreset.coastalCliffs:
+        return 'Hard edges and exposed flanks. Best for testing whether line movement still feels intentional under severe terrain limits.';
+      case MapPreset.ancientRuins:
+        return 'Fragmented battlefield with anchor points and dead ground. Good for History Civilis-style positional clarity.';
+      case MapPreset.desertOasis:
+        return 'Water discipline above all. Best for stress-testing thirst, wells, and dangerous local forage.';
     }
   }
 }
