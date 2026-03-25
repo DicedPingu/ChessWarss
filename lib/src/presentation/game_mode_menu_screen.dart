@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../application/save/save_repository.dart';
 import 'alpha_game_screen.dart';
 import 'game_mode.dart';
+import 'world_map_lab_screen.dart';
 
 class GameModeMenuScreen extends StatelessWidget {
   const GameModeMenuScreen({super.key, required this.saveRepository});
@@ -168,9 +169,21 @@ class GameModeMenuScreen extends StatelessWidget {
                               ),
                               Chip(
                                 avatar: Icon(Icons.map_rounded, size: 18),
-                                label: Text('Fast Map Testing'),
+                                label: Text('Hex / Nodes / Provinces'),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 14),
+                          FilledButton.tonalIcon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const WorldMapLabScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.grid_goldenratio_rounded),
+                            label: const Text('World Map Lab'),
                           ),
                         ],
                       ),

@@ -104,7 +104,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
   Map<BoardPosition, int> _foodTileOwnerByPosition = <BoardPosition, int>{};
   Map<BoardPosition, int> _pillagedTileUntilRound = <BoardPosition, int>{};
   bool _skipAiBattles = true;
-  static const int _maxArmyUnitsPerStack = 14;
+  static const int _maxArmyUnitsPerStack = 18;
   static const int _battleTurnLimit = 140;
   static const double _aiMoveTimeScale = 2 / 3;
 
@@ -1749,6 +1749,96 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     });
   }
 
+  List<ArmyStack> _adjacentMergeTargets(WorldState world, ArmyStack stack) {
+    final targets = <ArmyStack>[];
+    for (final other in world.stacks) {
+      if (other.id == stack.id || other.ownerId != stack.ownerId) {
+        continue;
+      }
+      if (_manhattanDistance(stack.position, other.position) != 1) {
+        continue;
+      }
+      if (!world.canTraverseBetween(stack.position, other.position)) {
+        continue;
+      }
+      targets.add(other);
+    }
+    targets.sort((left, right) {
+      final rowOrder = left.position.row.compareTo(right.position.row);
+      if (rowOrder != 0) {
+        return rowOrder;
+      }
+      return left.position.col.compareTo(right.position.col);
+    });
+    return targets;
+  }
+
+  Future<ArmyStack?> _showMergeTargetSheet({
+    required ArmyStack primary,
+    required List<ArmyStack> targets,
+  }) async {
+    if (targets.length == 1) {
+      return targets.first;
+    }
+    return showModalBottomSheet<ArmyStack>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Join Columns',
+                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Choose which adjacent allied column should be folded into ${primary.id}.',
+                ),
+                const SizedBox(height: 10),
+                for (final target in targets)
+                  Builder(
+                    builder: (tileContext) {
+                      final combinedUnits =
+                          primary.army.units.length + target.army.units.length;
+                      final canMerge = combinedUnits <= _maxArmyUnitsPerStack;
+                      return ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        tileColor: Colors.white.withValues(alpha: 0.76),
+                        title: Text(
+                          '${target.id} • ${target.army.label}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(
+                          'Tile (${target.position.row},${target.position.col}) • '
+                          '${target.army.units.length} units • '
+                          '${canMerge ? 'Result $combinedUnits/$_maxArmyUnitsPerStack units' : 'Too large for one host'}',
+                        ),
+                        trailing: Icon(
+                          canMerge
+                              ? Icons.call_merge_rounded
+                              : Icons.block_rounded,
+                        ),
+                        onTap: canMerge
+                            ? () => Navigator.of(tileContext).pop(target)
+                            : null,
+                      );
+                    },
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _onWorldTileTap(BoardPosition position) {
     if (_phase != _GamePhase.world || _world == null || _aiBusy) {
       return;
@@ -1890,6 +1980,22 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       waterById: water,
       thirstById: thirst,
     );
+  }
+
+  int _weightedStackMetric({
+    required int firstValue,
+    required int secondValue,
+    required int firstUnits,
+    required int secondUnits,
+    required int max,
+  }) {
+    final totalUnits = firstUnits + secondUnits;
+    if (totalUnits <= 0) {
+      return 0;
+    }
+    final weighted =
+        ((firstValue * firstUnits) + (secondValue * secondUnits)) / totalUnits;
+    return weighted.round().clamp(0, max).toInt();
   }
 
   Map<int, _CapturePolicy> _reconcileCapturePolicies(
@@ -2449,6 +2555,168 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       preserveSettlementId: _selectedSettlementId,
       foodTileOwnerByPosition: updatedFoodTiles,
       pillagedTileUntilRound: updatedPillagedTiles,
+    );
+  }
+
+  String _hostSuffixForUnits(int totalUnits) {
+    return totalUnits >= 15 ? 'Grand Host' : 'Field Host';
+  }
+
+  String _mergedHostLabel(String baseLabel, int totalUnits) {
+    final suffix = _hostSuffixForUnits(totalUnits);
+    if (baseLabel.endsWith(suffix)) {
+      return baseLabel;
+    }
+    if (baseLabel.endsWith('Grand Host') || baseLabel.endsWith('Field Host')) {
+      return baseLabel;
+    }
+    return '$baseLabel $suffix';
+  }
+
+  Future<void> _mergeSelectedArmy() async {
+    if (_phase != _GamePhase.world || _world == null || _aiBusy) {
+      return;
+    }
+
+    final world = _world!;
+    final primary = _selectedStack(world);
+    if (primary == null || primary.ownerId != world.activePlayerId) {
+      return;
+    }
+
+    final targets = _adjacentMergeTargets(world, primary);
+    if (targets.isEmpty) {
+      setState(() {
+        _status =
+            'No adjacent friendly column can join ${primary.id} right now.';
+      });
+      return;
+    }
+
+    final chosen = await _showMergeTargetSheet(
+      primary: primary,
+      targets: targets,
+    );
+    if (!mounted || chosen == null) {
+      return;
+    }
+
+    final projectedUnits = primary.army.units.length + chosen.army.units.length;
+    if (projectedUnits > _maxArmyUnitsPerStack) {
+      setState(() {
+        _status =
+            'Joining ${primary.id} with ${chosen.id} would exceed '
+            '$_maxArmyUnitsPerStack units.';
+      });
+      return;
+    }
+
+    final withCost = _consumeStrategicCost(
+      world: world,
+      playerId: primary.ownerId,
+      cpCost: 1,
+    );
+    if (withCost == null) {
+      return;
+    }
+
+    final refreshedPrimary = withCost.stackById(primary.id);
+    final refreshedSecondary = withCost.stackById(chosen.id);
+    if (refreshedPrimary == null || refreshedSecondary == null) {
+      return;
+    }
+
+    final refreshedUnits =
+        refreshedPrimary.army.units.length +
+        refreshedSecondary.army.units.length;
+    if (refreshedUnits > _maxArmyUnitsPerStack) {
+      setState(() {
+        _status =
+            'The combined host would exceed $_maxArmyUnitsPerStack units.';
+      });
+      return;
+    }
+
+    final mergedArmy = ArmyDefinition(
+      id: '${refreshedPrimary.id}_${refreshedSecondary.id}_host',
+      label: _mergedHostLabel(refreshedPrimary.army.label, refreshedUnits),
+      units: [...refreshedPrimary.army.units, ...refreshedSecondary.army.units],
+    );
+    final mergedStack = refreshedPrimary.copyWith(
+      army: mergedArmy,
+      label: _mergedHostLabel(refreshedPrimary.label, refreshedUnits),
+      entrenchedUntilRound: null,
+      forcedMarchRound: null,
+      fatigue: math.max(refreshedPrimary.fatigue, refreshedSecondary.fatigue),
+    );
+
+    final updatedStacks = <ArmyStack>[
+      for (final stack in withCost.stacks)
+        if (stack.id == refreshedPrimary.id)
+          mergedStack
+        else if (stack.id != refreshedSecondary.id)
+          stack,
+    ];
+
+    final updatedSupplyById = <String, int>{..._stackSupplyById}
+      ..[refreshedPrimary.id] = _weightedStackMetric(
+        firstValue: _stackSupply(refreshedPrimary.id),
+        secondValue: _stackSupply(refreshedSecondary.id),
+        firstUnits: refreshedPrimary.army.units.length,
+        secondUnits: refreshedSecondary.army.units.length,
+        max: 8,
+      )
+      ..remove(refreshedSecondary.id);
+    final updatedStarvationById = <String, int>{..._stackStarvationById}
+      ..[refreshedPrimary.id] = _weightedStackMetric(
+        firstValue: _stackStarvation(refreshedPrimary.id),
+        secondValue: _stackStarvation(refreshedSecondary.id),
+        firstUnits: refreshedPrimary.army.units.length,
+        secondUnits: refreshedSecondary.army.units.length,
+        max: 6,
+      )
+      ..remove(refreshedSecondary.id);
+    final updatedWaterById = <String, int>{..._stackWaterById}
+      ..[refreshedPrimary.id] = _weightedStackMetric(
+        firstValue: _stackWater(refreshedPrimary.id),
+        secondValue: _stackWater(refreshedSecondary.id),
+        firstUnits: refreshedPrimary.army.units.length,
+        secondUnits: refreshedSecondary.army.units.length,
+        max: 6,
+      )
+      ..remove(refreshedSecondary.id);
+    final updatedThirstById = <String, int>{..._stackThirstById}
+      ..[refreshedPrimary.id] = _weightedStackMetric(
+        firstValue: _stackThirst(refreshedPrimary.id),
+        secondValue: _stackThirst(refreshedSecondary.id),
+        firstUnits: refreshedPrimary.army.units.length,
+        secondUnits: refreshedSecondary.army.units.length,
+        max: 6,
+      )
+      ..remove(refreshedSecondary.id);
+
+    final updatedWorld = withCost.copyWith(
+      stacks: updatedStacks,
+      log: [
+        ...withCost.log,
+        'P${mergedStack.ownerId + 1} joined ${refreshedPrimary.id} with ${refreshedSecondary.id}, forming ${mergedStack.label}.',
+      ],
+    );
+
+    _finalizeStrategicAction(
+      updatedWorld: updatedWorld,
+      fromAi: false,
+      statusLine:
+          '${refreshedPrimary.id} joined columns with ${refreshedSecondary.id}. '
+          '${mergedStack.army.label} now fields $refreshedUnits units.',
+      preserveStackId: refreshedPrimary.id,
+      preserveSettlementId:
+          updatedWorld.settlementAt(mergedStack.position)?.id ??
+          _selectedSettlementId,
+      stackSupplyById: updatedSupplyById,
+      stackStarvationById: updatedStarvationById,
+      stackWaterById: updatedWaterById,
+      stackThirstById: updatedThirstById,
     );
   }
 
@@ -8456,6 +8724,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final water = _stackWater(stack.id);
     final thirst = _stackThirst(stack.id);
     final supplyReport = _supplyLineReport(world, stack);
+    final mergeTargets = _adjacentMergeTargets(world, stack);
     final tileOwner = _foodTileOwnerByPosition[stack.position];
     final tilePillaged =
         (_pillagedTileUntilRound[stack.position] ?? 0) >= world.round;
@@ -8483,6 +8752,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       _SupplyLineState.isolated =>
         'Foraging is now desperate and dangerous. Expect fatigue, thirst, and stragglers if you stay cut off.',
     };
+    final concentrationLine = mergeTargets.isEmpty
+        ? 'No adjacent allied column ready to join ranks.'
+        : '${mergeTargets.length} adjacent allied column(s) can be concentrated into this host.';
 
     return KeyedSubtree(
       key: ValueKey<String>('stack-${stack.id}'),
@@ -8530,6 +8802,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
             forageLine,
             style: const TextStyle(fontSize: 12, color: Color(0xFF604B2A)),
           ),
+          const SizedBox(height: 2),
+          Text(
+            concentrationLine,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF604B2A)),
+          ),
           if (selectedSettlement != null) ...[
             const SizedBox(height: 2),
             Text(
@@ -8556,6 +8833,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                 onPressed: canUseForcedMarch ? _toggleForcedMarchMode : null,
                 icon: const Icon(Icons.directions_run_rounded),
                 label: Text(_forcedMarchMode ? 'Forced On' : 'Forced'),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: mergeTargets.isNotEmpty ? _mergeSelectedArmy : null,
+                icon: const Icon(Icons.call_merge_rounded),
+                label: const Text('Join Columns'),
               ),
               if (selectedCamp == null)
                 FilledButton.tonalIcon(
@@ -9088,6 +9370,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
   Widget _buildBattleScreen(BuildContext context) {
     final session = _battle!;
     final battle = session.battleState;
+    final mediaSize = MediaQuery.sizeOf(context);
+    final useInlineHintButton = mediaSize.width < 720 || mediaSize.height < 900;
 
     return PopScope<void>(
       canPop: false,
@@ -9125,6 +9409,10 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final wide = constraints.maxWidth >= 980;
+                  final compactBattleHud =
+                      !wide &&
+                      (constraints.maxWidth < 720 ||
+                          constraints.maxHeight < 940);
                   if (wide) {
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -9135,6 +9423,21 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(flex: 2, child: _buildBattleSidebar(session)),
+                      ],
+                    );
+                  }
+
+                  if (compactBattleHud) {
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: _buildBattleBoardCard(session, compact: true),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildCompactBattleHud(
+                          session,
+                          showHintButton: useInlineHintButton,
+                        ),
                       ],
                     );
                   }
@@ -9152,19 +9455,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           ),
         ),
         floatingActionButton:
-            _playerTypeById(battle.activePlayer) == PlayerType.ai
+            _playerTypeById(battle.activePlayer) == PlayerType.ai ||
+                useInlineHintButton
             ? null
             : FloatingActionButton.extended(
-                onPressed: () {
-                  final action = _battleAi.chooseMove(
-                    battle,
-                    _seed,
-                    difficulty: _aiDifficulty,
-                  );
-                  if (action != null) {
-                    _executeBattleMove(action);
-                  }
-                },
+                onPressed: _requestBattleHint,
                 icon: const Icon(Icons.tips_and_updates_outlined),
                 label: const Text('Hint Move'),
               ),
@@ -9172,22 +9467,43 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     );
   }
 
-  Widget _buildBattleBoardCard(BattleSession session) {
+  void _requestBattleHint() {
+    final session = _battle;
+    if (session == null) {
+      return;
+    }
+    final action = _battleAi.chooseMove(
+      session.battleState,
+      _seed,
+      difficulty: _aiDifficulty,
+    );
+    if (action != null) {
+      _executeBattleMove(action);
+      return;
+    }
+    setState(() {
+      _status = 'No clear battle hint is available right now.';
+    });
+  }
+
+  Widget _buildBattleBoardCard(BattleSession session, {bool compact = false}) {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(compact ? 10 : 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Battlefield ${session.battlefield.notation}',
-              style: theme.textTheme.titleMedium,
+              style: compact
+                  ? theme.textTheme.titleSmall
+                  : theme.textTheme.titleMedium,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: compact ? 6 : 8),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: compact ? 6 : 8,
+              runSpacing: compact ? 6 : 8,
               children: [
                 Chip(
                   label: Text('P${session.attackerStack.ownerId + 1} Attacker'),
@@ -9200,9 +9516,15 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                     '${session.battleState.rows}x${session.battleState.cols}',
                   ),
                 ),
+                if (compact)
+                  Chip(
+                    label: Text(
+                      'Turn ${_battleTurnCounter(session.battleState)}',
+                    ),
+                  ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: compact ? 6 : 8),
             Expanded(
               child: RepaintBoundary(
                 child: BattleBoardWidget(
@@ -9217,8 +9539,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            _statusChip(_status),
+            SizedBox(height: compact ? 6 : 8),
+            compact ? _compactBattleStatusStrip(_status) : _statusChip(_status),
           ],
         ),
       ),
@@ -9396,6 +9718,447 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     );
   }
 
+  Widget _compactBattleStatusStrip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFFF4E7C8),
+        border: Border.all(
+          color: const Color(0xFF8A6A3E).withValues(alpha: 0.42),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, size: 16),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12.2,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactBattleHud(
+    BattleSession session, {
+    required bool showHintButton,
+  }) {
+    final battle = session.battleState;
+    final activeType = _playerTypeById(battle.activePlayer);
+    final activeIsHuman = activeType == PlayerType.human;
+    final activeCommandLines = _visibleCommandProfiles(
+      battle: battle,
+      ownerId: battle.activePlayer,
+      viewerId: battle.activePlayer,
+    );
+    final activeCommandLine = activeCommandLines.isEmpty
+        ? 'No commander'
+        : activeCommandLines.first;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _battleInfoChip(
+                  icon: Icons.military_tech_rounded,
+                  label: 'P${battle.activePlayer + 1} to move',
+                ),
+                _battleInfoChip(
+                  icon: Icons.hourglass_top_rounded,
+                  label: 'Turn ${_battleTurnCounter(battle)}',
+                ),
+                _battleInfoChip(
+                  icon: Icons.flag_circle_rounded,
+                  label: _decisiveSignalSummary(battle, battle.activePlayer),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Command: $activeCommandLine',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12.6,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF574220),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCompactBattleMoraleStrip(
+                    playerId: session.attackerStack.ownerId,
+                    morale: battle.moraleForPlayer(
+                      session.attackerStack.ownerId,
+                    ),
+                    moraleState: battle.moraleStateForPlayer(
+                      session.attackerStack.ownerId,
+                    ),
+                    maxMorale: battle.maxMorale,
+                    color: playerColor(session.attackerStack.ownerId),
+                    trendDelta: _latestMoraleDeltaForPlayer(
+                      battle,
+                      session.attackerStack.ownerId,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCompactBattleMoraleStrip(
+                    playerId: session.defenderStack.ownerId,
+                    morale: battle.moraleForPlayer(
+                      session.defenderStack.ownerId,
+                    ),
+                    moraleState: battle.moraleStateForPlayer(
+                      session.defenderStack.ownerId,
+                    ),
+                    maxMorale: battle.maxMorale,
+                    color: playerColor(session.defenderStack.ownerId),
+                    trendDelta: _latestMoraleDeltaForPlayer(
+                      battle,
+                      session.defenderStack.ownerId,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (activeIsHuman)
+              _buildCompactBattleActionGrid(battle)
+            else
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFEAE2D0),
+                ),
+                child: Text(
+                  'AI command is weighing the line of battle.',
+                  style: TextStyle(
+                    color: const Color(0xFF5C5446),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () => _showBattleBriefSheet(session),
+                  icon: const Icon(Icons.summarize_rounded),
+                  label: const Text('Battle Brief'),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: _showFieldManualDialog,
+                  icon: const Icon(Icons.menu_book_rounded),
+                  label: const Text('Manual'),
+                ),
+                if (showHintButton && activeIsHuman)
+                  FilledButton.icon(
+                    onPressed: _requestBattleHint,
+                    icon: const Icon(Icons.tips_and_updates_outlined),
+                    label: const Text('Hint Move'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _battleInfoChip({required IconData icon, required String label}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(99),
+        color: const Color(0xFFF1E5CB),
+        border: Border.all(
+          color: const Color(0xFF8A6C42).withValues(alpha: 0.34),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFF6E4D22)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11.8,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF4E391B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactBattleMoraleStrip({
+    required int playerId,
+    required int morale,
+    required MoraleState moraleState,
+    required int maxMorale,
+    required Color color,
+    required int trendDelta,
+  }) {
+    final statusColor = switch (moraleState) {
+      MoraleState.steady => const Color(0xFF2F6A55),
+      MoraleState.wavering => const Color(0xFF5A6E49),
+      MoraleState.routing => const Color(0xFF9D2D2D),
+      MoraleState.collapsed => const Color(0xFF6F1A1A),
+    };
+    final statusLabel = switch (moraleState) {
+      MoraleState.steady => 'Steady',
+      MoraleState.wavering => 'Shaken',
+      MoraleState.routing => 'Rout Risk',
+      MoraleState.collapsed => 'Broken',
+    };
+    final trendLabel = trendDelta > 0
+        ? '+$trendDelta'
+        : trendDelta < 0
+        ? '$trendDelta'
+        : '0';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: statusColor.withValues(alpha: 0.24)),
+        color: statusColor.withValues(alpha: 0.08),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'P${playerId + 1} $statusLabel',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.4,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+              Text(
+                trendLabel,
+                style: TextStyle(
+                  fontSize: 11.2,
+                  fontWeight: FontWeight.w700,
+                  color: trendDelta < 0
+                      ? const Color(0xFFAA2D2D)
+                      : const Color(0xFF2F6A55),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 2,
+            runSpacing: 1,
+            children: [
+              for (var i = 0; i < maxMorale; i++)
+                Icon(
+                  i < morale ? Icons.shield_rounded : Icons.shield_outlined,
+                  size: 14,
+                  color: i < morale
+                      ? color
+                      : const Color(0xFFA44A4A).withValues(alpha: 0.58),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactBattleActionGrid(BattleState battle) {
+    final buttonStyle = FilledButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      visualDensity: VisualDensity.compact,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final actionWidth = (constraints.maxWidth - 8) / 2;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            SizedBox(
+              width: actionWidth,
+              child: FilledButton.tonalIcon(
+                onPressed: battle.canCharge() ? _useCharge : null,
+                style: buttonStyle,
+                icon: const Icon(Icons.speed_rounded),
+                label: const Text('Charge'),
+              ),
+            ),
+            SizedBox(
+              width: actionWidth,
+              child: FilledButton.tonalIcon(
+                onPressed: battle.canDefend() ? _useDefend : null,
+                style: buttonStyle,
+                icon: const Icon(Icons.shield_rounded),
+                label: const Text('Hold'),
+              ),
+            ),
+            SizedBox(
+              width: actionWidth,
+              child: FilledButton.tonalIcon(
+                onPressed: battle.canAdvanceFrontline()
+                    ? _advanceFrontline
+                    : null,
+                style: buttonStyle,
+                icon: const Icon(Icons.trending_up_rounded),
+                label: const Text('Advance'),
+              ),
+            ),
+            SizedBox(
+              width: actionWidth,
+              child: FilledButton.tonalIcon(
+                onPressed: battle.canUseGeneralAdvanceSkill()
+                    ? _useGeneralAdvanceSkill
+                    : null,
+                style: buttonStyle,
+                icon: const Icon(Icons.bolt_rounded),
+                label: const Text('High Cmd'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _decisiveSignalSummary(BattleState battle, int playerId) {
+    if (!battle.commanderAlive(playerId)) {
+      return 'Commander lost';
+    }
+    final moraleState = battle.moraleStateForPlayer(playerId);
+    if (moraleState == MoraleState.collapsed) {
+      return 'Line broken';
+    }
+    if (moraleState == MoraleState.routing) {
+      return 'Retreat risk';
+    }
+    if (!battle.hasAnyLegalMove(playerId)) {
+      return 'Pinned in place';
+    }
+    return 'Line holding';
+  }
+
+  Future<void> _showBattleBriefSheet(BattleSession session) async {
+    final battle = session.battleState;
+    final recentBattleEvents = battle.eventLog.reversed
+        .take(10)
+        .toList(growable: false);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return FractionallySizedBox(
+          heightFactor: 0.88,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Battle Brief', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Condensed staff notes for command, morale, army traits, and the latest battlefield turns.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF5E4D33),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _commandCard(session),
+                  const SizedBox(height: 8),
+                  _decisiveSignalsCard(session),
+                  const SizedBox(height: 8),
+                  _battleArmyCard(
+                    'Attacker',
+                    session.attackerStack.army,
+                    session.attackerStack.ownerId,
+                    battle,
+                  ),
+                  const SizedBox(height: 8),
+                  _battleArmyCard(
+                    'Defender',
+                    session.defenderStack.army,
+                    session.defenderStack.ownerId,
+                    battle,
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Latest Turns',
+                            style: theme.textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 6),
+                          if (recentBattleEvents.isEmpty)
+                            const Text('No battle events yet.')
+                          else
+                            for (final event in recentBattleEvents)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 3,
+                                ),
+                                child: Text(
+                                  '[T${event.turn}] ${event.description}',
+                                ),
+                              ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _moraleLine({
     required String label,
     required int morale,
@@ -9539,6 +10302,16 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       }
     }
     return delta;
+  }
+
+  int _battleTurnCounter(BattleState battle) {
+    var latestTurn = 0;
+    for (final event in battle.eventLog) {
+      if (event.turn > latestTurn) {
+        latestTurn = event.turn;
+      }
+    }
+    return latestTurn;
   }
 
   Widget _commandCard(BattleSession session) {
