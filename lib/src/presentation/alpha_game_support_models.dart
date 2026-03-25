@@ -291,3 +291,43 @@ class _TerritoryTileStatus {
   final bool contested;
   final bool frontline;
 }
+
+@immutable
+class _ProvinceInfo {
+  const _ProvinceInfo({
+    required this.id,
+    required this.name,
+    required this.tiles,
+    required this.gridAnchor,
+    required this.ownerId,
+    required this.contested,
+    required this.frontline,
+    required this.grainValue,
+    required this.wealthValue,
+    required this.crossings,
+    required this.settlementCount,
+  });
+
+  final String id;
+  final String name;
+  final List<BoardPosition> tiles;
+  final Offset gridAnchor;
+  final int? ownerId;
+  final bool contested;
+  final bool frontline;
+  final int grainValue;
+  final int wealthValue;
+  final int crossings;
+  final int settlementCount;
+}
+
+@immutable
+class _ProvinceMapSummary {
+  const _ProvinceMapSummary({
+    required this.provinces,
+    required this.provinceByPosition,
+  });
+
+  final List<_ProvinceInfo> provinces;
+  final Map<BoardPosition, _ProvinceInfo> provinceByPosition;
+}

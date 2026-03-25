@@ -10,7 +10,7 @@ class WorldMapLabScreen extends StatefulWidget {
 }
 
 class _WorldMapLabScreenState extends State<WorldMapLabScreen> {
-  _WorldMapPrototype _selected = _WorldMapPrototype.squareLegionGrid;
+  _WorldMapPrototype _selected = _WorldMapPrototype.provinceMosaic;
 
   void _cyclePrototype(int delta) {
     final values = _WorldMapPrototype.values;
@@ -114,28 +114,36 @@ class _WorldMapLabScreenState extends State<WorldMapLabScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            Chip(
-                              avatar: const Icon(
-                                Icons.account_balance_rounded,
-                                size: 18,
+                        if (!denseScreen) ...[
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              Chip(
+                                avatar: const Icon(
+                                  Icons.account_balance_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(spec.commandFeel),
                               ),
-                              label: Text(spec.commandFeel),
-                            ),
-                            Chip(
-                              avatar: const Icon(Icons.route_rounded, size: 18),
-                              label: Text(spec.routeFeel),
-                            ),
-                            Chip(
-                              avatar: const Icon(Icons.water_rounded, size: 18),
-                              label: Text(spec.waterFeel),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
+                              Chip(
+                                avatar: const Icon(
+                                  Icons.route_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(spec.routeFeel),
+                              ),
+                              Chip(
+                                avatar: const Icon(
+                                  Icons.water_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(spec.waterFeel),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                        ],
                         Expanded(
                           child: DecoratedBox(
                             decoration: BoxDecoration(

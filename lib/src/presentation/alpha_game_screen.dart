@@ -7148,6 +7148,232 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     return resolved;
   }
 
+  List<String> _provinceNamesForPreset(MapPreset preset) {
+    return switch (preset) {
+      MapPreset.greatField => const <String>[
+        'Aedui March',
+        'Sequani Plain',
+        'Arduenna Woods',
+        'Central Gaul',
+        'Belgae Frontier',
+        'Southern Granaries',
+      ],
+      MapPreset.tightRavine => const <String>[
+        'Upper Defile',
+        'Stone Gate',
+        'West Ridge',
+        'Ravine Heart',
+        'Eastern Gorge',
+        'Low Basin',
+      ],
+      MapPreset.brokenGround => const <String>[
+        'North Scrub',
+        'Shattered Fields',
+        'West Rise',
+        'Broken Uplands',
+        'East Verge',
+        'South Hollow',
+      ],
+      MapPreset.riverlands => const <String>[
+        'Upper Ford',
+        'Middle Channel',
+        'West Bank',
+        'Island Reach',
+        'East Bank',
+        'Lower Delta',
+      ],
+      MapPreset.mountainPass => const <String>[
+        'High Spur',
+        'Eagle Gate',
+        'West Shelf',
+        'Pass Heart',
+        'East Shelf',
+        'Low Vale',
+      ],
+      MapPreset.coastalCliffs => const <String>[
+        'Cliff March',
+        'Salt Road',
+        'West Moor',
+        'Harbor Plain',
+        'East Headland',
+        'Southern Coast',
+      ],
+      MapPreset.ancientRuins => const <String>[
+        'Old Walls',
+        'Temple Reach',
+        'West Dust',
+        'Forum Basin',
+        'East Relics',
+        'Southern Necropolis',
+      ],
+      MapPreset.desertOasis => const <String>[
+        'Dune Rim',
+        'Palm Route',
+        'West Wadi',
+        'Oasis Heart',
+        'East Caravan',
+        'Southern Wells',
+      ],
+    };
+  }
+
+  int _provinceZoneId(WorldState world, BoardPosition position) {
+    if (world.size <= 1) {
+      return 3;
+    }
+    final x = position.col / (world.size - 1);
+    final y = position.row / (world.size - 1);
+
+    if (y < 0.28) {
+      return x < 0.46 ? 0 : 1;
+    }
+    if (x < 0.28) {
+      return 2;
+    }
+    if (x > 0.72 && y < 0.72) {
+      return 4;
+    }
+    if (y > 0.72) {
+      return 5;
+    }
+    return 3;
+  }
+
+  _ProvinceMapSummary _provinceMapSummary(
+    WorldState world,
+    Map<BoardPosition, _TerritoryTileStatus> territoryByPosition,
+  ) {
+    final provinceNames = _provinceNamesForPreset(world.preset);
+    final tilesByZone = <int, List<BoardPosition>>{};
+    for (final tile in world.tiles) {
+      final zoneId = _provinceZoneId(world, tile.position);
+      tilesByZone
+          .putIfAbsent(zoneId, () => <BoardPosition>[])
+          .add(tile.position);
+    }
+
+    final provinces = <_ProvinceInfo>[];
+    final provinceByPosition = <BoardPosition, _ProvinceInfo>{};
+    final sortedZones = tilesByZone.keys.toList()..sort();
+
+    for (final zoneId in sortedZones) {
+      final tiles = tilesByZone[zoneId];
+      if (tiles == null || tiles.isEmpty) {
+        continue;
+      }
+      final tileSet = tiles.toSet();
+      final settlements = world.settlements
+          .where((settlement) => tileSet.contains(settlement.position))
+          .toList(growable: false);
+      final ownerWeights = <int, int>{};
+      var contested = false;
+      var frontline = false;
+      var grainValue = 0;
+
+      for (final position in tiles) {
+        final tile = world.tileAt(position);
+        if (tile.terrain == TerrainType.passable) {
+          grainValue++;
+        }
+        final territory = territoryByPosition[position];
+        if (territory == null) {
+          continue;
+        }
+        contested = contested || territory.contested;
+        frontline = frontline || territory.frontline;
+        final ownerId = territory.ownerId;
+        if (ownerId != null && tile.terrain == TerrainType.passable) {
+          ownerWeights[ownerId] = (ownerWeights[ownerId] ?? 0) + 1;
+        }
+      }
+
+      for (final settlement in settlements) {
+        if (settlement.ownerId >= 0) {
+          ownerWeights[settlement.ownerId] =
+              (ownerWeights[settlement.ownerId] ?? 0) + 2;
+        }
+      }
+
+      int? ownerId;
+      var bestWeight = 0;
+      var tied = false;
+      for (final entry in ownerWeights.entries) {
+        if (entry.value > bestWeight) {
+          ownerId = entry.key;
+          bestWeight = entry.value;
+          tied = false;
+        } else if (entry.value == bestWeight && entry.value > 0) {
+          tied = true;
+        }
+      }
+      if (tied) {
+        ownerId = null;
+      }
+
+      final wealthValue = settlements.fold<int>(
+        0,
+        (sum, settlement) =>
+            sum + settlement.taxYield + (settlement.cultureRating ~/ 2),
+      );
+      final crossings = world.riverEdges
+          .where(
+            (edge) =>
+                edge.type != RiverEdgeType.river &&
+                (tileSet.contains(edge.a) || tileSet.contains(edge.b)),
+          )
+          .length;
+      final averageRow =
+          tiles.fold<double>(0, (sum, position) => sum + position.row) /
+          tiles.length;
+      final averageCol =
+          tiles.fold<double>(0, (sum, position) => sum + position.col) /
+          tiles.length;
+
+      final province = _ProvinceInfo(
+        id: 'province_$zoneId',
+        name: provinceNames[zoneId % provinceNames.length],
+        tiles: List<BoardPosition>.unmodifiable(tiles),
+        gridAnchor: Offset(averageCol + 0.5, averageRow + 0.5),
+        ownerId: ownerId,
+        contested: contested || tied,
+        frontline: frontline,
+        grainValue: grainValue,
+        wealthValue: wealthValue,
+        crossings: crossings,
+        settlementCount: settlements.length,
+      );
+      provinces.add(province);
+      for (final position in tiles) {
+        provinceByPosition[position] = province;
+      }
+    }
+
+    return _ProvinceMapSummary(
+      provinces: List<_ProvinceInfo>.unmodifiable(provinces),
+      provinceByPosition: provinceByPosition,
+    );
+  }
+
+  String _provinceControlSummary(_ProvinceInfo province) {
+    final ownerText = province.ownerId == null
+        ? 'Contested'
+        : 'Player ${province.ownerId! + 1}';
+    return '$ownerText • Grain ${province.grainValue} • Treasure ${province.wealthValue}';
+  }
+
+  String _provincePressureSummary(_ProvinceInfo province) {
+    if (province.frontline && province.contested) {
+      return 'Province contested under active pressure.';
+    }
+    if (province.frontline) {
+      return 'Frontier province under pressure.';
+    }
+    if (province.contested) {
+      return 'Province disputed by rival supply reach.';
+    }
+    return 'Interior province with stable command access.';
+  }
+
   Widget _buildWorldBoard(WorldState world) {
     final activePlayer = world.players[world.activePlayerIndex];
     final stackByPosition = <BoardPosition, ArmyStack>{
@@ -7168,6 +7394,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final selectedSettlement = _selectedSettlementById(world);
     final selectedSettlementPosition = selectedSettlement?.position;
     final territoryByPosition = _territoryStatusMap(world);
+    final provinceSummary = _provinceMapSummary(world, territoryByPosition);
+    final provinceByPosition = provinceSummary.provinceByPosition;
     final supplyReportByStackId = <String, _SupplyLineReport>{
       for (final stack in world.stacks)
         stack.id: _supplyLineReport(world, stack),
@@ -7175,6 +7403,29 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final selectedSupplyReport = selectedStack == null
         ? null
         : supplyReportByStackId[selectedStack.id];
+    final focusedProvince =
+        provinceByPosition[selectedStack?.position ??
+            selectedSettlementPosition];
+    final displayedProvince =
+        focusedProvince ??
+        provinceSummary.provinces.firstWhere(
+          (province) => province.frontline || province.contested,
+          orElse: () => provinceSummary.provinces.isEmpty
+              ? const _ProvinceInfo(
+                  id: 'province_none',
+                  name: 'No Province',
+                  tiles: <BoardPosition>[],
+                  gridAnchor: Offset.zero,
+                  ownerId: null,
+                  contested: false,
+                  frontline: false,
+                  grainValue: 0,
+                  wealthValue: 0,
+                  crossings: 0,
+                  settlementCount: 0,
+                )
+              : provinceSummary.provinces.first,
+        );
     final activeColor = playerColor(activePlayer.id);
     final activeTextColor = _contrastColor(activeColor);
     final activeOutposts = world.camps.where(
@@ -7271,6 +7522,37 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               ],
             ),
             const SizedBox(height: 4),
+            if (displayedProvince.tiles.isNotEmpty) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _worldBoardHeaderChip(
+                    icon: Icons.map_rounded,
+                    label: displayedProvince.name,
+                  ),
+                  _worldBoardHeaderChip(
+                    icon: Icons.grass_rounded,
+                    label: 'Grain ${displayedProvince.grainValue}',
+                  ),
+                  _worldBoardHeaderChip(
+                    icon: Icons.account_balance_wallet_rounded,
+                    label: 'Treasure ${displayedProvince.wealthValue}',
+                  ),
+                  _worldBoardHeaderChip(
+                    icon: Icons.water_rounded,
+                    label: 'Crossings ${displayedProvince.crossings}',
+                  ),
+                  if (displayedProvince.frontline ||
+                      displayedProvince.contested)
+                    _worldBoardHeaderChip(
+                      icon: Icons.gpp_bad_rounded,
+                      label: 'Frontier',
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+            ],
             Expanded(
               child: RepaintBoundary(
                 child: DecoratedBox(
@@ -7317,6 +7599,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                                       child: CustomPaint(
                                         painter: _WorldCampaignOverlayPainter(
                                           world: world,
+                                          provinces: provinceSummary.provinces,
+                                          provinceByPosition:
+                                              provinceByPosition,
                                           territoryByPosition:
                                               territoryByPosition,
                                           selectedSupplyLine:
@@ -7324,6 +7609,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                                               const <BoardPosition>[],
                                           highlightedOwnerId:
                                               selectedStack?.ownerId,
+                                          highlightedProvinceId:
+                                              focusedProvince?.id,
                                           reduceEffects: _reduceEffects,
                                         ),
                                       ),
@@ -7757,6 +8044,37 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _worldBoardHeaderChip({
+    required IconData icon,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(99),
+        color: const Color(0xFFF1E4C7),
+        border: Border.all(
+          color: const Color(0xFF876741).withValues(alpha: 0.34),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFF664620)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11.6,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF4A3518),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -8368,6 +8686,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
 
   Widget _buildWorldSidebar(WorldState world, PlayerSlot activePlayer) {
     final activeIsAi = activePlayer.type == PlayerType.ai;
+    final territoryByPosition = _territoryStatusMap(world);
+    final provinceSummary = _provinceMapSummary(world, territoryByPosition);
+    final provinceByPosition = provinceSummary.provinceByPosition;
     final activeCp = _commandPointsForPlayer(world, world.activePlayerId);
     final activeFood = _foodForPlayer(world, world.activePlayerId);
     final activeFoodProjection = _foodProjectionForPlayer(
@@ -8401,6 +8722,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final selectedTilePillaged =
         selectedPosition != null &&
         (_pillagedTileUntilRound[selectedPosition] ?? 0) >= world.round;
+    final selectedProvince =
+        provinceByPosition[selectedStack?.position ??
+            selectedSettlement?.position];
     final canUseSettlementActions =
         !activeIsAi &&
         !_aiBusy &&
@@ -8489,6 +8813,13 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                         '${_stackWater(selectedOwnedStack.id)} ${_waterStateLabel(_stackWater(selectedOwnedStack.id), _stackThirst(selectedOwnedStack.id))}',
                     tooltip:
                         'Selected army water state. Thirst rises faster than hunger when you march away from rivers, crossings, settlements, and camps.',
+                  ),
+                if (selectedProvince != null)
+                  _worldHudPill(
+                    icon: Icons.map_rounded,
+                    value: selectedProvince.name,
+                    tooltip:
+                        '${_provinceControlSummary(selectedProvince)}. ${_provincePressureSummary(selectedProvince)}',
                   ),
                 _worldHudPill(
                   icon: Icons.fort_rounded,
@@ -8584,6 +8915,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               _selectedArmyHudCard(
                 stack: selectedStack,
                 activePlayerId: world.activePlayerId,
+                province: selectedProvince,
               ),
             ],
             const SizedBox(height: 6),
@@ -8994,20 +9326,18 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         children: [
           Text('How To Start', style: TextStyle(fontWeight: FontWeight.w800)),
           SizedBox(height: 6),
+          Text('Tap an army to issue march, camp, merge, and supply orders.'),
+          SizedBox(height: 2),
           Text(
-            'Tap one of your armies first. That opens movement, camp, and supply orders.',
+            'Rivers and crossings decide water, movement, and safe supply corridors.',
           ),
           SizedBox(height: 2),
           Text(
-            'Blue rivers and crossings shape the campaign. Armies that camp on water stay steadier before battle.',
+            'Province borders and territory wash show where grain, treasure, and command reach actually sit.',
           ),
           SizedBox(height: 2),
           Text(
-            'Territory wash shows who can feed the ground. Gold route markers show the selected army line.',
-          ),
-          SizedBox(height: 2),
-          Text(
-            'Tap settlements for tax, harvest, defense, and levies. Grass marks food, flame marks pillage.',
+            'Settlements give tax, harvest, defense, and levies. Grass marks food; flame marks pillage.',
           ),
         ],
       ),
@@ -9841,6 +10171,8 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               ],
             ),
             const SizedBox(height: 8),
+            _buildCompactBattleArmyLines(session),
+            const SizedBox(height: 8),
             if (activeIsHuman)
               _buildCompactBattleActionGrid(battle)
             else
@@ -9886,6 +10218,61 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactBattleArmyLines(BattleSession session) {
+    final battle = session.battleState;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _compactBattleArmyLine(
+          label: 'Attacker',
+          army: session.attackerStack.army,
+          ownerId: session.attackerStack.ownerId,
+          battle: battle,
+        ),
+        const SizedBox(height: 4),
+        _compactBattleArmyLine(
+          label: 'Defender',
+          army: session.defenderStack.army,
+          ownerId: session.defenderStack.ownerId,
+          battle: battle,
+        ),
+      ],
+    );
+  }
+
+  Widget _compactBattleArmyLine({
+    required String label,
+    required ArmyDefinition army,
+    required int ownerId,
+    required BattleState battle,
+  }) {
+    final perks = _visibleGeneralPerks(
+      battle: battle,
+      ownerId: ownerId,
+      viewerId: battle.activePlayer,
+    );
+    final line = perks.isEmpty ? _armyRoleSummary(army) : perks.first;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        color: playerColor(ownerId).withValues(alpha: 0.08),
+        border: Border.all(color: playerColor(ownerId).withValues(alpha: 0.22)),
+      ),
+      child: Text(
+        '$label • ${army.label} • ${_armyTileSummary(army).replaceFirst('\n', ' | ')} • $line',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 11.7,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF4B3A1D),
         ),
       ),
     );
@@ -10694,6 +11081,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
   Widget _selectedArmyHudCard({
     required ArmyStack stack,
     required int activePlayerId,
+    required _ProvinceInfo? province,
   }) {
     final ownerColor = playerColor(stack.ownerId);
     final onOwner = _contrastColor(ownerColor);
@@ -10713,6 +11101,12 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
             anchor: null,
           )
         : _supplyLineReport(_world!, stack);
+    final mergeTargets = _world == null
+        ? const <ArmyStack>[]
+        : _adjacentMergeTargets(_world!, stack);
+    final immediateEnemy = _world == null
+        ? null
+        : _adjacentEngagementTarget(_world!, stack);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -10792,6 +11186,32 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                       },
                       fontWeight: FontWeight.w700,
                     ),
+                  ),
+                  if (province != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Province: ${province.name} • '
+                      'Grain ${province.grainValue} • '
+                      'Treasure ${province.wealthValue} • '
+                      'Crossings ${province.crossings}',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _provincePressureSummary(province),
+                      style: TextStyle(
+                        color: province.frontline || province.contested
+                            ? const Color(0xFF8C2E1F)
+                            : const Color(0xFF295D46),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 2),
+                  Text(
+                    'Command: ${mergeTargets.isEmpty ? 'No merge-ready wings' : '${mergeTargets.length} wing(s) ready to join columns'}'
+                    '${immediateEnemy == null ? ' • No immediate clash' : ' • ${immediateEnemy.id} in striking distance'}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -11443,16 +11863,22 @@ class _WorldTilePainter extends CustomPainter {
 class _WorldCampaignOverlayPainter extends CustomPainter {
   const _WorldCampaignOverlayPainter({
     required this.world,
+    required this.provinces,
+    required this.provinceByPosition,
     required this.territoryByPosition,
     required this.selectedSupplyLine,
     required this.highlightedOwnerId,
+    required this.highlightedProvinceId,
     required this.reduceEffects,
   });
 
   final WorldState world;
+  final List<_ProvinceInfo> provinces;
+  final Map<BoardPosition, _ProvinceInfo> provinceByPosition;
   final Map<BoardPosition, _TerritoryTileStatus> territoryByPosition;
   final List<BoardPosition> selectedSupplyLine;
   final int? highlightedOwnerId;
+  final String? highlightedProvinceId;
   final bool reduceEffects;
 
   @override
@@ -11534,6 +11960,142 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
       }
     }
 
+    final provinceBorderPaint = Paint()
+      ..color = const Color(0xFF5E4121).withValues(alpha: 0.54)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.1
+      ..strokeCap = StrokeCap.round;
+    final highlightedProvincePaint = Paint()
+      ..color = const Color(0xFFC49434).withValues(alpha: 0.72)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.1
+      ..strokeCap = StrokeCap.round;
+    for (var row = 0; row < world.size; row++) {
+      for (var col = 0; col < world.size; col++) {
+        final position = BoardPosition(row, col);
+        final province = provinceByPosition[position];
+        if (province == null) {
+          continue;
+        }
+        final left = col * cellWidth;
+        final top = row * cellHeight;
+        final right = left + cellWidth;
+        final bottom = top + cellHeight;
+
+        void drawProvinceEdge(
+          BoardPosition neighbor,
+          Offset start,
+          Offset end,
+        ) {
+          final neighborProvince = provinceByPosition[neighbor];
+          final boundaryPaint = province.id == highlightedProvinceId
+              ? highlightedProvincePaint
+              : provinceBorderPaint;
+          if (neighborProvince == null || neighborProvince.id != province.id) {
+            canvas.drawLine(start, end, boundaryPaint);
+          }
+        }
+
+        if (row == 0) {
+          canvas.drawLine(
+            Offset(left, top),
+            Offset(right, top),
+            province.id == highlightedProvinceId
+                ? highlightedProvincePaint
+                : provinceBorderPaint,
+          );
+        } else {
+          drawProvinceEdge(
+            BoardPosition(row - 1, col),
+            Offset(left, top),
+            Offset(right, top),
+          );
+        }
+
+        if (col == 0) {
+          canvas.drawLine(
+            Offset(left, top),
+            Offset(left, bottom),
+            province.id == highlightedProvinceId
+                ? highlightedProvincePaint
+                : provinceBorderPaint,
+          );
+        } else {
+          drawProvinceEdge(
+            BoardPosition(row, col - 1),
+            Offset(left, top),
+            Offset(left, bottom),
+          );
+        }
+
+        if (row == world.size - 1) {
+          canvas.drawLine(
+            Offset(left, bottom),
+            Offset(right, bottom),
+            province.id == highlightedProvinceId
+                ? highlightedProvincePaint
+                : provinceBorderPaint,
+          );
+        } else {
+          drawProvinceEdge(
+            BoardPosition(row + 1, col),
+            Offset(left, bottom),
+            Offset(right, bottom),
+          );
+        }
+
+        if (col == world.size - 1) {
+          canvas.drawLine(
+            Offset(right, top),
+            Offset(right, bottom),
+            province.id == highlightedProvinceId
+                ? highlightedProvincePaint
+                : provinceBorderPaint,
+          );
+        } else {
+          drawProvinceEdge(
+            BoardPosition(row, col + 1),
+            Offset(right, top),
+            Offset(right, bottom),
+          );
+        }
+      }
+    }
+
+    for (final province in provinces) {
+      if (province.tiles.isEmpty) {
+        continue;
+      }
+      final anchor = Offset(
+        province.gridAnchor.dx * cellWidth,
+        province.gridAnchor.dy * cellHeight,
+      );
+      final labelColor = province.frontline || province.contested
+          ? const Color(0xFF6E2318)
+          : const Color(0xFF5A472E);
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: province.name.toUpperCase(),
+          style: TextStyle(
+            color: labelColor.withValues(
+              alpha: province.id == highlightedProvinceId ? 0.9 : 0.68,
+            ),
+            fontSize: math.max(9, cellHeight * 0.2),
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.7,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: cellWidth * 2.4);
+      textPainter.paint(
+        canvas,
+        Offset(
+          anchor.dx - textPainter.width / 2,
+          anchor.dy - textPainter.height / 2,
+        ),
+      );
+    }
+
     if (selectedSupplyLine.length >= 2) {
       final routePoints = selectedSupplyLine
           .map(
@@ -11607,7 +12169,10 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
   bool shouldRepaint(covariant _WorldCampaignOverlayPainter oldDelegate) {
     return oldDelegate.world != world ||
         oldDelegate.highlightedOwnerId != highlightedOwnerId ||
+        oldDelegate.highlightedProvinceId != highlightedProvinceId ||
         oldDelegate.reduceEffects != reduceEffects ||
+        oldDelegate.provinces.length != provinces.length ||
+        oldDelegate.provinceByPosition.length != provinceByPosition.length ||
         oldDelegate.selectedSupplyLine.length != selectedSupplyLine.length ||
         oldDelegate.territoryByPosition.length != territoryByPosition.length;
   }

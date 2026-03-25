@@ -26,7 +26,7 @@ void main() {
     await tester.tap(find.text('World Map Lab'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Square Legion Grid'), findsOneWidget);
+    expect(find.text('Province Mosaic'), findsOneWidget);
     expect(find.text('Flat Hex'), findsOneWidget);
     expect(find.text('Pointy Hex'), findsOneWidget);
   });
