@@ -42,7 +42,7 @@ class _GameModeMenuScreenState extends State<GameModeMenuScreen> {
     ),
     _ModeChoice(
       latinTitle: 'TABULAE PROBATIONIS',
-      englishTitle: 'Proving Tables',
+      englishTitle: 'War Table Trials',
       shortLabel: 'Test mechanics',
       description:
           'Playable test grounds for map shapes, logistics, siege pressure, and menu ideas before any of it becomes final.',
@@ -399,14 +399,8 @@ class _ModeDetailsPanel extends StatelessWidget {
             _MenuInfoLine(label: 'What it is', text: choice.description),
             const SizedBox(height: 6),
             _MenuInfoLine(label: 'Try first', text: choice.tryFirst),
-            if (!compact) ...[
+            if (!compact)
               const SizedBox(height: 10),
-              _MenuInfoLine(
-                label: 'New player read',
-                text:
-                    '${choice.latinTitle} is the Latin button; ${choice.englishTitle} is the English name.',
-              ),
-            ],
             SizedBox(height: compact ? 12 : 22),
             FilledButton.icon(
               style: FilledButton.styleFrom(

@@ -66,8 +66,12 @@
 ## Map & Mechanics Testing
 
 - [x] Setup "Tabulae Probationis" menu for testing different map types.
-- [x] Implement Hexagonal (6-edged) Total War style map test.
-- [x] Add playable square, hex, province, lane, and island map tests.
-- [ ] Implement fortifications and other game mechanics tests on these maps in a test menu, they should advantage the defenders, as "realistic" (yes) as possible, yet maybe arcadically interesting.
+- [x] Cut the rejected TF, PW, IC, SW, and Logistics test beds from the menu.
+- [x] Keep two focused Hex variants: open movement and chokepoint terrain.
+- [x] Add Commander Clash as the general-visibility mechanics test bed.
+- [x] Make test-bed movement direct: select army, tap lit target, auto-end turn.
+- [ ] Add a side-by-side movement timing trial: instant move on selection vs queued orders that resolve only when the turn ends.
+- [ ] Decide which Hex variant actually feels good on phone.
+- [ ] Add defender-advantage and fortification tests only after the movement tests feel good.
 - [ ] Make the game more simple, easy to understand, optimize for fun, fast, yet interasting playability.
 - [ ] Make the game quick to understand, as in refined overall.

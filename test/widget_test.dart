@@ -21,7 +21,7 @@ Future<void> _enterCasusBelliSetup(WidgetTester tester) async {
 Future<void> _enterProvingTables(WidgetTester tester) async {
   await tester.tap(find.text('TABULAE PROBATIONIS'));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Start Proving Tables'));
+  await tester.tap(find.text('Start War Table Trials'));
   await tester.pumpAndSettle();
 }
 
@@ -57,7 +57,7 @@ void main() {
     expect(find.text('CASUS BELLI'), findsOneWidget);
     expect(find.textContaining('Cause for War'), findsWidgets);
     expect(find.text('TABULAE PROBATIONIS'), findsOneWidget);
-    expect(find.textContaining('Proving Tables'), findsWidgets);
+    expect(find.textContaining('War Table Trials'), findsWidgets);
     expect(find.text('Start Eternal Rome'), findsOneWidget);
   });
 
@@ -68,19 +68,37 @@ void main() {
 
     await _enterProvingTables(tester);
 
-    expect(find.text('Tabulae Probationis / Proving Tables'), findsOneWidget);
-    expect(find.text('Logistics & Siege'), findsWidgets);
-    expect(find.text('Square Warboard'), findsWidgets);
-    expect(find.text('Hex Campaign'), findsOneWidget);
-    expect(find.text('Province Web'), findsOneWidget);
-    expect(find.text('Three Fronts'), findsOneWidget);
-    expect(find.text('Island Crossings'), findsOneWidget);
-    expect(find.textContaining('Works:'), findsWidgets);
-    expect(find.textContaining('Not proven:'), findsWidgets);
-    expect(find.textContaining('Direction:'), findsWidgets);
+    expect(find.text('War Table Trials'), findsOneWidget);
+    expect(find.text('SELECTED TRIAL'), findsOneWidget);
+    expect(find.text('Open Hex March'), findsWidgets);
+    expect(find.text('Hex Chokepoints'), findsOneWidget);
+    expect(find.text('Commander Clash'), findsOneWidget);
+    expect(find.text('Logistics & Siege'), findsNothing);
+    expect(find.text('Square Warboard'), findsNothing);
+    expect(find.text('Province Web'), findsNothing);
+    expect(find.text('Three Fronts'), findsNothing);
+    expect(find.text('Island Crossings'), findsNothing);
+    expect(find.text('What you test'), findsOneWidget);
+    expect(find.text('Works now'), findsOneWidget);
+    expect(find.text('Watch for'), findsOneWidget);
   });
 
-  testWidgets('map prototype lets player select and move', (
+  testWidgets('war table menu stays inside a phone viewport', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await _pumpApp(tester);
+
+    await _enterProvingTables(tester);
+
+    expect(find.text('CHESSWARSS  |  WAR TABLE TRIALS'), findsOneWidget);
+    expect(find.text('Select -> Open'), findsOneWidget);
+    expect(find.text('Open Test'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('map test uses direct select and click-to-move orders', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 1200));
@@ -88,22 +106,25 @@ void main() {
     await _pumpApp(tester);
 
     await _enterProvingTables(tester);
-    await tester.tap(find.text('Square Warboard').first);
+    await tester.tap(find.text('Open Hex March').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Open Test'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Square Warboard Test'), findsOneWidget);
-    expect(find.textContaining('Army: E1'), findsOneWidget);
-    expect(find.text('Move Here'), findsOneWidget);
-
-    await tester.tap(find.text('E2'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Move Here'));
+    await tester.tap(find.byKey(const ValueKey('war-table-open-test')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Army: E2'), findsOneWidget);
-    expect(find.textContaining('Moves: 1'), findsOneWidget);
+    expect(find.text('Open Hex March Test'), findsOneWidget);
+    expect(find.textContaining('Turn 1: Roman Vanguard'), findsOneWidget);
+    expect(find.text('Move Here'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('map-test-tile-H40')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Roman Vanguard selected'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('map-test-tile-H30')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('moved to 4.1'), findsOneWidget);
+    expect(find.textContaining('Turn 2: Hill Host'), findsOneWidget);
+    expect(find.textContaining('Turn auto-ended'), findsOneWidget);
   });
 
   testWidgets('can start Casus Belli and reach world map', (
@@ -157,22 +178,22 @@ void main() {
     expect(find.text('Victory and Policy'), findsOneWidget);
   });
 
-  testWidgets('logistics prototype states what works and what is unproven', (
+  testWidgets('commander clash makes generals visible in the test bed', (
     WidgetTester tester,
   ) async {
     await _pumpApp(tester);
 
     await _enterProvingTables(tester);
 
-    await tester.tap(find.text('Logistics & Siege').first);
+    await tester.tap(find.text('Commander Clash').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Open Test'));
+    await tester.tap(find.byKey(const ValueKey('war-table-open-test')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Prototype Status'), findsOneWidget);
-    expect(find.textContaining('Works: one-hex movement'), findsOneWidget);
-    expect(find.textContaining('Not proven: balance'), findsOneWidget);
-    expect(find.textContaining('Direction: keep logistics'), findsOneWidget);
-    expect(find.text('Pillage Local Tile'), findsOneWidget);
+    expect(find.text('Commander Clash Test'), findsOneWidget);
+    expect(find.textContaining('Lucius Drusus'), findsOneWidget);
+    expect(find.textContaining('Command anchor'), findsOneWidget);
+    expect(find.textContaining('Tap active army'), findsOneWidget);
+    expect(find.text('Move Here'), findsNothing);
   });
 }

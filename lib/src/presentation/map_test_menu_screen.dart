@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'logistics_siege_prototype_screen.dart';
 import 'map_test_screen.dart';
 
 class MapTestMenuScreen extends StatefulWidget {
@@ -14,16 +13,6 @@ class _MapTestMenuScreenState extends State<MapTestMenuScreen> {
   int _selectedIndex = 0;
 
   late final List<_TestEntry> _entries = [
-    _TestEntry(
-      title: 'Logistics & Siege',
-      cardTitle: 'Logistics',
-      subtitle: 'Supply, pillage, fortified camp',
-      worksNow: 'Move one hex, forage, pillage, starve, and assault a camp.',
-      notProven: 'Balance, AI, persistence, and final battle integration.',
-      direction: 'Judge whether logistics are readable and worth keeping.',
-      icon: Icons.shield_rounded,
-      open: () => _push(const LogisticsSiegeTestScreen()),
-    ),
     for (final type in MapTestType.values)
       _TestEntry(
         title: type.title,
@@ -44,9 +33,9 @@ class _MapTestMenuScreenState extends State<MapTestMenuScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFAE8BC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF7B2D26),
+        backgroundColor: const Color(0xFF3D1D13),
         foregroundColor: Colors.white,
-        title: const Text('Tabulae Probationis / Proving Tables'),
+        title: const Text('War Table Trials'),
       ),
       body: SafeArea(
         child: LayoutBuilder(
@@ -58,29 +47,15 @@ class _MapTestMenuScreenState extends State<MapTestMenuScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBEC),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFF3D1D13),
-                        width: 2,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Text(
-                        'Playable test grounds. Pick a card for details, then open it to feel the mechanic.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: const Color(0xFF3D1D13),
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
+                  const _WarTableHeader(),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    flex: isWide ? 6 : 6,
+                    child: _FeaturedTrialPanel(entry: selected),
                   ),
                   const SizedBox(height: 12),
                   Expanded(
+                    flex: isWide ? 3 : 5,
                     child: _FixedTestGrid(
                       entries: _entries,
                       selectedIndex: _selectedIndex,
@@ -90,8 +65,6 @@ class _MapTestMenuScreenState extends State<MapTestMenuScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  _SelectedTestPanel(entry: selected),
                 ],
               ),
             );
@@ -103,6 +76,284 @@ class _MapTestMenuScreenState extends State<MapTestMenuScreen> {
 
   void _push(Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+  }
+}
+
+class _WarTableHeader extends StatelessWidget {
+  const _WarTableHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF3D1D13),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE7C25E), width: 2),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            Icon(Icons.flare_rounded, color: Color(0xFFE7C25E), size: 24),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'CHESSWARSS  |  WAR TABLE TRIALS',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Select -> Open',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Color(0xFFFFD166),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeaturedTrialPanel extends StatelessWidget {
+  const _FeaturedTrialPanel({required this.entry});
+
+  final _TestEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = _iconColorFor(entry.title);
+    final soft = _softColorFor(entry.title);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: soft,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF3D1D13), width: 3),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x443D1D13),
+            blurRadius: 0,
+            offset: Offset(5, 6),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: CustomPaint(painter: _TrialPanelPainter(color: accent)),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFF3D1D13),
+                          width: 2,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Icon(entry.icon, color: Colors.white, size: 32),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'SELECTED TRIAL',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Color(0xFF7B2D26),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          Text(
+                            entry.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF3D1D13),
+                              fontSize: 25,
+                              fontWeight: FontWeight.w900,
+                              height: 1.02,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _TrialCallout(label: 'What you test', text: entry.subtitle),
+                _TrialCallout(label: 'Works now', text: entry.worksNow),
+                _TrialCallout(label: 'Watch for', text: entry.notProven),
+                const Spacer(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        entry.direction,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF4C3525),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          height: 1.12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton.icon(
+                      key: const ValueKey('war-table-open-test'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: accent,
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(
+                          color: Color(0xFF3D1D13),
+                          width: 2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: entry.open,
+                      icon: const Icon(Icons.play_arrow_rounded),
+                      label: const Text(
+                        'Open Test',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrialCallout extends StatelessWidget {
+  const _TrialCallout({required this.label, required this.text});
+
+  final String label;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0x668D6B48)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 82,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF7B2D26),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF3D1D13),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    height: 1.12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TrialPanelPainter extends CustomPainter {
+  const _TrialPanelPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color.withValues(alpha: 0.16);
+    canvas.drawCircle(Offset(size.width * 0.88, size.height * 0.22), 74, paint);
+    canvas.drawCircle(
+      Offset(size.width * 0.72, size.height * 0.92),
+      108,
+      paint,
+    );
+
+    final routePaint = Paint()
+      ..color = const Color(0x663D1D13)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    final path = Path()
+      ..moveTo(size.width * 0.08, size.height * 0.78)
+      ..quadraticBezierTo(
+        size.width * 0.32,
+        size.height * 0.60,
+        size.width * 0.56,
+        size.height * 0.74,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.78,
+        size.height * 0.88,
+        size.width * 0.94,
+        size.height * 0.58,
+      );
+    canvas.drawPath(path, routePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrialPanelPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }
 
@@ -264,113 +515,20 @@ class _TestCard extends StatelessWidget {
   }
 }
 
-class _SelectedTestPanel extends StatelessWidget {
-  const _SelectedTestPanel({required this.entry});
-
-  final _TestEntry entry;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEC),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF3D1D13), width: 3),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x333D1D13),
-            blurRadius: 0,
-            offset: Offset(4, 5),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              entry.title,
-              style: const TextStyle(
-                color: Color(0xFF3D1D13),
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 6),
-            _StatusLine(label: 'What this is', text: entry.subtitle),
-            _StatusLine(label: 'Works', text: entry.worksNow),
-            _StatusLine(label: 'Not proven', text: entry.notProven),
-            _StatusLine(label: 'Direction', text: entry.direction),
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF7B2D26),
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFF3D1D13), width: 2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                onPressed: entry.open,
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text('Open Test'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusLine extends StatelessWidget {
-  const _StatusLine({required this.label, required this.text});
-
-  final String label;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Text(
-        '$label: $text',
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: Color(0xFF4C3525),
-          fontSize: 12.5,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
 Color _iconColorFor(String title) {
   return switch (title) {
-    'Logistics & Siege' => const Color(0xFF5E5A67),
-    'Square Warboard' => const Color(0xFF8A6A3E),
-    'Hex Campaign' => const Color(0xFF3D7A4F),
-    'Province Web' => const Color(0xFF7B2D26),
-    'Three Fronts' => const Color(0xFF315F7D),
-    'Island Crossings' => const Color(0xFF2E6F87),
+    'Open Hex March' => const Color(0xFF2F7D4A),
+    'Hex Chokepoints' => const Color(0xFF315F7D),
+    'Commander Clash' => const Color(0xFF7B2D26),
     _ => const Color(0xFF7B2D26),
   };
 }
 
 Color _softColorFor(String title) {
   return switch (title) {
-    'Logistics & Siege' => const Color(0xFFE7D8FF),
-    'Square Warboard' => const Color(0xFFFFE0A3),
-    'Hex Campaign' => const Color(0xFFD1F2C9),
-    'Province Web' => const Color(0xFFFFC4B8),
-    'Three Fronts' => const Color(0xFFCDE8FF),
-    'Island Crossings' => const Color(0xFFC8F2F5),
+    'Open Hex March' => const Color(0xFFD1F2C9),
+    'Hex Chokepoints' => const Color(0xFFCDE8FF),
+    'Commander Clash' => const Color(0xFFFFC4B8),
     _ => const Color(0xFFFFF0B7),
   };
 }

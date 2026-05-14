@@ -5969,17 +5969,44 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         key: ValueKey<String>(text),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.72),
+          color: const Color(0xFFE9F4FF),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF3A5C51).withValues(alpha: 0.2),
-          ),
+          border: Border.all(color: const Color(0xFF24536A), width: 2),
+          boxShadow: _reduceEffects
+              ? null
+              : const [
+                  BoxShadow(
+                    color: Color(0x3324536A),
+                    blurRadius: 0,
+                    offset: Offset(2, 3),
+                  ),
+                ],
         ),
         child: Row(
           children: [
-            const Icon(Icons.info_outline_rounded, size: 18),
+            const Icon(
+              Icons.campaign_rounded,
+              size: 18,
+              color: Color(0xFF24536A),
+            ),
             const SizedBox(width: 8),
-            Expanded(child: Text(text)),
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: const TextStyle(
+                    color: Color(0xFF1F2D36),
+                    fontWeight: FontWeight.w800,
+                  ),
+                  children: [
+                    const TextSpan(
+                      text: 'Latest: ',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    TextSpan(text: text),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -7656,6 +7683,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                             final isLegalMove = _worldLegalMoves.contains(
                               position,
                             );
+                            final isLegalAttack =
+                                isLegalMove &&
+                                selectedStack != null &&
+                                stack != null &&
+                                stack.ownerId != selectedStack.ownerId;
                             final foodTileOwner =
                                 _foodTileOwnerByPosition[position];
                             final tilePillaged =
@@ -7837,19 +7869,19 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                                                 if (isLegalMove &&
                                                     stack == null)
                                                   Center(
-                                                    child: Container(
-                                                      width: 18,
-                                                      height: 18,
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            const Color(
-                                                              0xFF2F5D4E,
-                                                            ).withValues(
-                                                              alpha: 0.56,
-                                                            ),
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                    ),
+                                                    child:
+                                                        _buildWorldMoveTargetMarker(
+                                                          attack: false,
+                                                        ),
+                                                  ),
+                                                if (isLegalAttack)
+                                                  Positioned(
+                                                    right: 1,
+                                                    top: 18,
+                                                    child:
+                                                        _buildWorldMoveTargetMarker(
+                                                          attack: true,
+                                                        ),
                                                   ),
                                                 if (stack != null)
                                                   Center(
@@ -8312,6 +8344,50 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     );
   }
 
+  Widget _buildWorldMoveTargetMarker({required bool attack}) {
+    final color = attack ? const Color(0xFFB12D25) : const Color(0xFF1F7A4E);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: Colors.white, width: 1.3),
+        boxShadow: _reduceEffects
+            ? null
+            : [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.34),
+                  blurRadius: 7,
+                  spreadRadius: 1,
+                ),
+              ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              attack
+                  ? Icons.sports_martial_arts_rounded
+                  : Icons.near_me_rounded,
+              size: 11,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 2),
+            Text(
+              attack ? 'HIT' : 'GO',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 8,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildWorldTileSiteSummary({
     required WorldState world,
     required SettlementState? settlement,
@@ -8736,17 +8812,40 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final stackAtSelectedSettlement = selectedSettlement == null
         ? null
         : world.stackAt(selectedSettlement.position);
+    final objectiveText = activeIsAi
+        ? '${activePlayer.name} is thinking. Watch the highlighted route and latest order.'
+        : selectedOwnedStack == null
+        ? 'Select one of your armies. Bright stacks can march, camp, secure food, or attack.'
+        : 'Selected ${selectedOwnedStack.id}: tap a highlighted sector to march, or use the command bar.';
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final compactLayout = constraints.maxHeight < 210;
-        final hudCard = Card(
+        final hudCard = DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF4D6),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF5C3A21), width: 2),
+            boxShadow: _reduceEffects
+                ? null
+                : const [
+                    BoxShadow(
+                      color: Color(0x333D1D13),
+                      blurRadius: 0,
+                      offset: Offset(3, 4),
+                    ),
+                  ],
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(9),
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
+                _hudSectionTag(
+                  icon: Icons.ads_click_rounded,
+                  text: 'COMMAND BAR',
+                ),
                 _worldHudPill(
                   icon: Icons.bolt_rounded,
                   value: '$activeCp',
@@ -8850,6 +8949,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _worldObjectiveBanner(
+                activePlayer: activePlayer,
+                objectiveText: objectiveText,
+              ),
+              const SizedBox(height: 6),
               _statusChip(_status),
               const SizedBox(height: 6),
               hudCard,
@@ -8860,6 +8964,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _worldObjectiveBanner(
+              activePlayer: activePlayer,
+              objectiveText: objectiveText,
+            ),
+            const SizedBox(height: 6),
             _statusChip(_status),
             const SizedBox(height: 6),
             hudCard,
@@ -8933,6 +9042,83 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     );
   }
 
+  Widget _worldObjectiveBanner({
+    required PlayerSlot activePlayer,
+    required String objectiveText,
+  }) {
+    final color = playerColor(activePlayer.id);
+    final onColor = _contrastColor(color);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.65), width: 2),
+        boxShadow: _reduceEffects
+            ? null
+            : [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.18),
+                  blurRadius: 0,
+                  offset: const Offset(3, 4),
+                ),
+              ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(
+                  activePlayer.type == PlayerType.ai
+                      ? Icons.memory_rounded
+                      : Icons.flag_rounded,
+                  color: onColor,
+                  size: 22,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Player ${activePlayer.id + 1} • ${activePlayer.name}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    objectiveText,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF2D2117),
+                      fontWeight: FontWeight.w900,
+                      height: 1.12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _worldHudPill({
     required IconData icon,
     required String value,
@@ -8987,6 +9173,32 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               child: content,
             )
           : content,
+    );
+  }
+
+  Widget _hudSectionTag({required IconData icon, required String text}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3D1D13),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFC9A227), width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: const Color(0xFFFFF0B7), size: 15),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Color(0xFFFFF0B7),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -9325,18 +9537,10 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         children: [
           Text('How To Start', style: TextStyle(fontWeight: FontWeight.w800)),
           SizedBox(height: 6),
-          Text('Tap an army to issue march, camp, merge, and supply orders.'),
-          SizedBox(height: 2),
           Text(
-            'Rivers and crossings decide water, movement, and safe supply corridors.',
-          ),
-          SizedBox(height: 2),
-          Text(
-            'Province borders and territory wash show where grain, treasure, and command reach actually sit.',
-          ),
-          SizedBox(height: 2),
-          Text(
-            'Settlements give tax, harvest, defense, and levies. Grass marks food; flame marks pillage.',
+            'Tap an army to issue march, camp, merge, and supply orders. Rivers, borders, settlements, grass, and flame mark water, territory, food, and pillage.',
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
