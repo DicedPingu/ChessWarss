@@ -489,30 +489,30 @@ class _TestCard extends StatelessWidget {
 
 Color _iconColorFor(String title) {
   return switch (title) {
-    'Open Hex March' => const Color(0xFF2F7D4A),
-    'Wide Front' => const Color(0xFF4D8B3D),
-    'River Fork' => const Color(0xFF287B9A),
-    'Ridge Gate' => const Color(0xFF8A6A3E),
-    'Forest Net' => const Color(0xFF265F38),
-    'Coast Hop' => const Color(0xFF2E6F87),
-    'Ambush Bowl' => const Color(0xFF6D3A82),
-    'Relay Lines' => const Color(0xFFB88A42),
-    'Commander Clash' => const Color(0xFF7B2D26),
+    'Road Tempo' => const Color(0xFFB88A42),
+    'Twin Crossing' => const Color(0xFF287B9A),
+    'Crown Hill' => const Color(0xFF8A6A3E),
+    'Valley Gate' => const Color(0xFF725E45),
+    'Coastal Landing' => const Color(0xFF1F6F83),
+    'Forest Screen' => const Color(0xFF265F38),
+    'Supply Spine' => const Color(0xFF7A8B35),
+    'Siege Ring' => const Color(0xFF6A576E),
+    'Three Approaches' => const Color(0xFF315F7D),
     _ => const Color(0xFF7B2D26),
   };
 }
 
 Color _softColorFor(String title) {
   return switch (title) {
-    'Open Hex March' => const Color(0xFFD1F2C9),
-    'Wide Front' => const Color(0xFFE2F4C8),
-    'River Fork' => const Color(0xFFCDE8FF),
-    'Ridge Gate' => const Color(0xFFFFE0A3),
-    'Forest Net' => const Color(0xFFCBEAC8),
-    'Coast Hop' => const Color(0xFFC8F2F5),
-    'Ambush Bowl' => const Color(0xFFE7D8FF),
-    'Relay Lines' => const Color(0xFFFFF0B7),
-    'Commander Clash' => const Color(0xFFFFC4B8),
+    'Road Tempo' => const Color(0xFFFFF0B7),
+    'Twin Crossing' => const Color(0xFFCDE8FF),
+    'Crown Hill' => const Color(0xFFFFE0A3),
+    'Valley Gate' => const Color(0xFFE7D8C8),
+    'Coastal Landing' => const Color(0xFFC8F2F5),
+    'Forest Screen' => const Color(0xFFCBEAC8),
+    'Supply Spine' => const Color(0xFFE2F4C8),
+    'Siege Ring' => const Color(0xFFE7D8FF),
+    'Three Approaches' => const Color(0xFFD9E8FF),
     _ => const Color(0xFFFFF0B7),
   };
 }

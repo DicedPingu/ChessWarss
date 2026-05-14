@@ -3,90 +3,90 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 enum MapTestType {
-  hexOpen,
-  hexWide,
-  hexFork,
-  hexRidge,
-  hexForest,
-  hexCoast,
-  hexAmbush,
-  hexRelay,
-  commanderClash,
+  roadTempo,
+  twinCrossing,
+  crownHill,
+  valleyGate,
+  coastalLanding,
+  forestScreen,
+  supplySpine,
+  siegeRing,
+  threeApproaches,
 }
 
 extension MapTestTypeCopy on MapTestType {
   String get cardTitle => switch (this) {
-    MapTestType.hexOpen => 'Open Hex March',
-    MapTestType.hexWide => 'Wide Front',
-    MapTestType.hexFork => 'River Fork',
-    MapTestType.hexRidge => 'Ridge Gate',
-    MapTestType.hexForest => 'Forest Net',
-    MapTestType.hexCoast => 'Coast Hop',
-    MapTestType.hexAmbush => 'Ambush Bowl',
-    MapTestType.hexRelay => 'Relay Lines',
-    MapTestType.commanderClash => 'Commander Clash',
+    MapTestType.roadTempo => 'Road Tempo',
+    MapTestType.twinCrossing => 'Twin Crossing',
+    MapTestType.crownHill => 'Crown Hill',
+    MapTestType.valleyGate => 'Valley Gate',
+    MapTestType.coastalLanding => 'Coastal Landing',
+    MapTestType.forestScreen => 'Forest Screen',
+    MapTestType.supplySpine => 'Supply Spine',
+    MapTestType.siegeRing => 'Siege Ring',
+    MapTestType.threeApproaches => 'Three Approaches',
   };
 
   String get title => cardTitle;
 
   String get subtitle => switch (this) {
-    MapTestType.hexOpen => 'Baseline',
-    MapTestType.hexWide => 'Open war',
-    MapTestType.hexFork => 'River split',
-    MapTestType.hexRidge => 'One gate',
-    MapTestType.hexForest => 'Messy paths',
-    MapTestType.hexCoast => 'Island steps',
-    MapTestType.hexAmbush => 'Center trap',
-    MapTestType.hexRelay => 'Road tempo',
-    MapTestType.commanderClash => 'Generals',
+    MapTestType.roadTempo => 'Fast road',
+    MapTestType.twinCrossing => 'Two bridges',
+    MapTestType.crownHill => 'High ground',
+    MapTestType.valleyGate => 'Gate + flank',
+    MapTestType.coastalLanding => 'Ports',
+    MapTestType.forestScreen => 'Hidden flank',
+    MapTestType.supplySpine => 'Supply line',
+    MapTestType.siegeRing => 'Encircle',
+    MapTestType.threeApproaches => '3 routes',
   };
 
   String get worksNow => switch (this) {
-    MapTestType.hexOpen => 'Pick army. Tap lit hex. Auto-turn.',
-    MapTestType.hexWide => 'More room, less choke.',
-    MapTestType.hexFork => 'Water splits decisions.',
-    MapTestType.hexRidge => 'Hard blocker, clear gate.',
-    MapTestType.hexForest => 'Soft visual confusion test.',
-    MapTestType.hexCoast => 'Stepping-stone map feel.',
-    MapTestType.hexAmbush => 'Center bait and flanks.',
-    MapTestType.hexRelay => 'Road/relay route readability.',
-    MapTestType.commanderClash => 'Named commanders must read fast.',
+    MapTestType.roadTempo => 'Road tiles can chain one extra road step.',
+    MapTestType.twinCrossing => 'River blocks; bridges open clear fights.',
+    MapTestType.crownHill => 'Center hill pulls both armies into contact.',
+    MapTestType.valleyGate => 'Short gate or long flank is readable.',
+    MapTestType.coastalLanding => 'Ports act like connected landing points.',
+    MapTestType.forestScreen => 'Forest cover creates a visible side screen.',
+    MapTestType.supplySpine => 'Depots make the safe line obvious.',
+    MapTestType.siegeRing => 'Ring roads show how to encircle a fort.',
+    MapTestType.threeApproaches => 'Left, center, right routes are distinct.',
   };
 
   String get notProven => switch (this) {
-    MapTestType.hexOpen => 'Combat, AI, traffic.',
-    MapTestType.hexWide => 'May feel empty.',
-    MapTestType.hexFork => 'May feel fiddly.',
-    MapTestType.hexRidge => 'May feel solved.',
-    MapTestType.hexForest => 'May be unreadable.',
-    MapTestType.hexCoast => 'May be too slow.',
-    MapTestType.hexAmbush => 'May punish too hard.',
-    MapTestType.hexRelay => 'May be too obvious.',
-    MapTestType.commanderClash => 'Progression and morale.',
+    MapTestType.roadTempo => 'May be too fast.',
+    MapTestType.twinCrossing => 'May become bridge camping.',
+    MapTestType.crownHill => 'May overvalue center.',
+    MapTestType.valleyGate => 'May still feel solved.',
+    MapTestType.coastalLanding => 'May need naval rules later.',
+    MapTestType.forestScreen => 'May hide too much.',
+    MapTestType.supplySpine => 'May become escort busywork.',
+    MapTestType.siegeRing => 'May need defender tools.',
+    MapTestType.threeApproaches => 'May be too abstract.',
   };
 
   String get direction => switch (this) {
-    MapTestType.hexOpen => 'Best current baseline.',
-    MapTestType.hexWide => 'Feel freedom.',
-    MapTestType.hexFork => 'Feel route choice.',
-    MapTestType.hexRidge => 'Feel choke pressure.',
-    MapTestType.hexForest => 'Feel uncertainty.',
-    MapTestType.hexCoast => 'Feel campaign stepping.',
-    MapTestType.hexAmbush => 'Feel danger.',
-    MapTestType.hexRelay => 'Feel tempo.',
-    MapTestType.commanderClash => 'Feel generals.',
+    MapTestType.roadTempo => 'Baseline movement feel.',
+    MapTestType.twinCrossing => 'Crossing pressure.',
+    MapTestType.crownHill => 'Center objective.',
+    MapTestType.valleyGate => 'Choke vs flank.',
+    MapTestType.coastalLanding => 'Operational landing.',
+    MapTestType.forestScreen => 'Ambush readability.',
+    MapTestType.supplySpine => 'Line protection.',
+    MapTestType.siegeRing => 'Fort pressure.',
+    MapTestType.threeApproaches => 'Route comparison.',
   };
 
   IconData get icon => switch (this) {
-    MapTestType.hexOpen => Icons.hexagon_rounded,
-    MapTestType.hexWide => Icons.open_in_full_rounded,
-    MapTestType.hexFork => Icons.water_rounded,
-    MapTestType.hexRidge => Icons.terrain_rounded,
-    MapTestType.hexForest => Icons.forest_rounded,
-    MapTestType.hexCoast => Icons.sailing_rounded,
-    MapTestType.hexAmbush => Icons.visibility_rounded,
-    MapTestType.hexRelay => Icons.alt_route_rounded,
-    MapTestType.commanderClash => Icons.military_tech_rounded,
+    MapTestType.roadTempo => Icons.alt_route_rounded,
+    MapTestType.twinCrossing => Icons.water_rounded,
+    MapTestType.crownHill => Icons.landscape_rounded,
+    MapTestType.valleyGate => Icons.terrain_rounded,
+    MapTestType.coastalLanding => Icons.anchor_rounded,
+    MapTestType.forestScreen => Icons.forest_rounded,
+    MapTestType.supplySpine => Icons.grass_rounded,
+    MapTestType.siegeRing => Icons.fort_rounded,
+    MapTestType.threeApproaches => Icons.call_split_rounded,
   };
 }
 
@@ -195,10 +195,7 @@ class _MapTestScreenState extends State<MapTestScreen> {
   Set<String> _reachableIds() {
     if (_selectedSide != _activeSide) return const {};
     final fromId = _armyTileBySide[_activeSide]!;
-    return _spec.connectionsFor(fromId).where((id) {
-      final tile = _spec.tile(id);
-      return !tile.blocked;
-    }).toSet();
+    return _spec.reachableFrom(fromId);
   }
 
   void _onTileTap(String tileId) {
@@ -280,7 +277,7 @@ class _HexTrialBoard extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xFF172536),
+        color: spec.background,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE7C25E), width: 2),
         boxShadow: const [
@@ -406,13 +403,19 @@ class _HexTrialTile extends StatelessWidget {
                     size: 20,
                   )
                 else
-                  Text(
-                    tile.label,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_iconFor(tile.kind), color: Colors.white, size: 15),
+                      Text(
+                        tile.label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
                   ),
                 if (reachable && army == null)
                   const Positioned(
@@ -786,6 +789,7 @@ class _HexTrialSpec {
     required this.tiles,
     required this.edges,
     required this.armies,
+    this.movement = _MovementRule.adjacent,
   }) : tileById = Map.unmodifiable({for (final tile in tiles) tile.id: tile}),
        armyBySide = Map.unmodifiable({
          for (final army in armies) army.side: army,
@@ -800,6 +804,7 @@ class _HexTrialSpec {
   final List<_HexTile> tiles;
   final List<_HexEdge> edges;
   final List<_TrialArmy> armies;
+  final _MovementRule movement;
   final Map<String, _HexTile> tileById;
   final Map<_ArmySide, _TrialArmy> armyBySide;
 
@@ -814,10 +819,38 @@ class _HexTrialSpec {
     };
   }
 
+  Set<String> reachableFrom(String id) {
+    final direct = connectionsFor(
+      id,
+    ).where((next) => !tile(next).blocked).toSet();
+    if (movement == _MovementRule.roadTempo && tile(id).kind == _HexKind.road) {
+      for (final middle in List<String>.from(direct)) {
+        if (tile(middle).kind != _HexKind.road) continue;
+        for (final next in connectionsFor(middle)) {
+          if (next != id &&
+              tile(next).kind == _HexKind.road &&
+              !tile(next).blocked) {
+            direct.add(next);
+          }
+        }
+      }
+    }
+    if (movement == _MovementRule.portHop && tile(id).kind == _HexKind.port) {
+      direct.addAll(
+        tiles
+            .where((tile) => tile.kind == _HexKind.port && tile.id != id)
+            .map((tile) => tile.id),
+      );
+    }
+    return direct;
+  }
+
   double tileSizeFor(double boardSize) {
     return (boardSize / 7.3).clamp(38, 68).toDouble();
   }
 }
+
+enum _MovementRule { adjacent, roadTempo, portHop }
 
 class _HexTile {
   const _HexTile({
@@ -827,6 +860,7 @@ class _HexTile {
     required this.y,
     required this.terrain,
     required this.color,
+    this.kind = _HexKind.field,
     this.blocked = false,
   });
 
@@ -836,7 +870,36 @@ class _HexTile {
   final double y;
   final String terrain;
   final Color color;
+  final _HexKind kind;
   final bool blocked;
+}
+
+enum _HexKind {
+  field,
+  road,
+  bridge,
+  river,
+  ridge,
+  forest,
+  port,
+  hill,
+  fort,
+  supply,
+}
+
+IconData _iconFor(_HexKind kind) {
+  return switch (kind) {
+    _HexKind.field => Icons.hexagon_rounded,
+    _HexKind.road => Icons.alt_route_rounded,
+    _HexKind.bridge => Icons.water_rounded,
+    _HexKind.river => Icons.waves_rounded,
+    _HexKind.ridge => Icons.terrain_rounded,
+    _HexKind.forest => Icons.forest_rounded,
+    _HexKind.port => Icons.anchor_rounded,
+    _HexKind.hill => Icons.landscape_rounded,
+    _HexKind.fort => Icons.fort_rounded,
+    _HexKind.supply => Icons.grass_rounded,
+  };
 }
 
 class _HexEdge {
@@ -923,101 +986,153 @@ class _HexagonBorder extends OutlinedBorder {
 
 _HexTrialSpec _specFor(MapTestType type) {
   return switch (type) {
-    MapTestType.hexOpen => _hexOpenSpec(),
-    MapTestType.hexWide => _hexWideSpec(),
-    MapTestType.hexFork => _hexForkSpec(),
-    MapTestType.hexRidge => _hexRidgeSpec(),
-    MapTestType.hexForest => _hexForestSpec(),
-    MapTestType.hexCoast => _hexCoastSpec(),
-    MapTestType.hexAmbush => _hexAmbushSpec(),
-    MapTestType.hexRelay => _hexRelaySpec(),
-    MapTestType.commanderClash => _commanderClashSpec(),
+    MapTestType.roadTempo => _roadTempoSpec(),
+    MapTestType.twinCrossing => _twinCrossingSpec(),
+    MapTestType.crownHill => _crownHillSpec(),
+    MapTestType.valleyGate => _valleyGateSpec(),
+    MapTestType.coastalLanding => _coastalLandingSpec(),
+    MapTestType.forestScreen => _forestScreenSpec(),
+    MapTestType.supplySpine => _supplySpineSpec(),
+    MapTestType.siegeRing => _siegeRingSpec(),
+    MapTestType.threeApproaches => _threeApproachesSpec(),
   };
 }
 
-_HexTrialSpec _hexOpenSpec() {
-  final (tiles, edges) = _hexGrid(rows: 5, cols: 5);
+_HexTrialSpec _roadTempoSpec() {
+  final (tiles, edges) = _hexGrid(
+    rows: 5,
+    cols: 5,
+    road: {'H40', 'H30', 'H21', 'H12', 'H03'},
+    supply: {'H31', 'H13'},
+  );
   return _HexTrialSpec(
-    name: MapTestType.hexOpen.title,
-    feel: 'Baseline: open, fast, readable.',
-    worksNow: MapTestType.hexOpen.worksNow,
-    notProven: MapTestType.hexOpen.notProven,
+    name: MapTestType.roadTempo.title,
+    feel: 'Fast readable road, slower open flanks.',
+    worksNow: MapTestType.roadTempo.worksNow,
+    notProven: MapTestType.roadTempo.notProven,
     background: const Color(0xFF1E3C2B),
-    routeColor: const Color(0x778FD19E),
+    routeColor: const Color(0x99FFD166),
     tiles: tiles,
     edges: edges,
+    movement: _MovementRule.roadTempo,
     armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
   );
 }
 
-_HexTrialSpec _hexWideSpec() {
-  final (tiles, edges) = _hexGrid(rows: 5, cols: 6);
-  return _HexTrialSpec(
-    name: MapTestType.hexWide.title,
-    feel: 'Wider OHM: more space, less forced lane.',
-    worksNow: MapTestType.hexWide.worksNow,
-    notProven: MapTestType.hexWide.notProven,
-    background: const Color(0xFF223829),
-    routeColor: const Color(0x778FD19E),
-    tiles: tiles,
-    edges: edges,
-    armies: _armies(romeStart: 'H40', enemyStart: 'H05'),
+_HexTrialSpec _twinCrossingSpec() {
+  final blocked = {'H20', 'H22', 'H24'};
+  final (tiles, edges) = _hexGrid(
+    rows: 5,
+    cols: 5,
+    river: {
+      'H10',
+      'H11',
+      'H12',
+      'H13',
+      'H14',
+      'H30',
+      'H31',
+      'H32',
+      'H33',
+      'H34',
+    },
+    bridge: {'H12', 'H32'},
+    blocked: blocked,
   );
-}
-
-_HexTrialSpec _hexForkSpec() {
-  final river = {'H10', 'H11', 'H21', 'H31', 'H32', 'H23'};
-  final (tiles, edges) = _hexGrid(rows: 5, cols: 5, river: river);
   return _HexTrialSpec(
-    name: MapTestType.hexFork.title,
-    feel: 'OHM with a river fork splitting obvious routes.',
-    worksNow: MapTestType.hexFork.worksNow,
-    notProven: MapTestType.hexFork.notProven,
-    background: const Color(0xFF173247),
+    name: MapTestType.twinCrossing.title,
+    feel: 'Two bridges, one fake center wall, clear crossing fights.',
+    worksNow: MapTestType.twinCrossing.worksNow,
+    notProven: MapTestType.twinCrossing.notProven,
+    background: const Color(0xFF153345),
     routeColor: const Color(0x99CDE8FF),
     tiles: tiles,
-    edges: edges,
+    edges: _withoutBlocked(edges, blocked),
     armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
   );
 }
 
-_HexTrialSpec _hexRidgeSpec() {
+_HexTrialSpec _crownHillSpec() {
+  final (tiles, edges) = _hexGrid(
+    rows: 5,
+    cols: 5,
+    hill: {'H21', 'H22', 'H23', 'H12', 'H32'},
+    road: {'H40', 'H30', 'H21', 'H12', 'H03'},
+  );
+  return _HexTrialSpec(
+    name: MapTestType.crownHill.title,
+    feel: 'Crown hill is obvious, but roads and sides contest it.',
+    worksNow: MapTestType.crownHill.worksNow,
+    notProven: MapTestType.crownHill.notProven,
+    background: const Color(0xFF2D2A20),
+    routeColor: const Color(0x99E4C988),
+    tiles: tiles,
+    edges: edges,
+    movement: _MovementRule.roadTempo,
+    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+  );
+}
+
+_HexTrialSpec _valleyGateSpec() {
   final blocked = {'H11', 'H12', 'H13', 'H31', 'H32', 'H33'};
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
     blocked: blocked,
-    hill: {'H21', 'H22', 'H23'},
+    bridge: {'H22'},
+    road: {'H40', 'H30', 'H22', 'H14', 'H04', 'H41', 'H42', 'H43', 'H34'},
   );
   return _HexTrialSpec(
-    name: MapTestType.hexRidge.title,
-    feel: 'Hard ridges with one readable middle gate.',
-    worksNow: MapTestType.hexRidge.worksNow,
-    notProven: MapTestType.hexRidge.notProven,
+    name: MapTestType.valleyGate.title,
+    feel: 'Short gate through the valley, long flank around it.',
+    worksNow: MapTestType.valleyGate.worksNow,
+    notProven: MapTestType.valleyGate.notProven,
     background: const Color(0xFF302B24),
     routeColor: const Color(0x99E4C988),
     tiles: tiles,
-    edges: edges
-        .where((edge) {
-          return !blocked.contains(edge.a) && !blocked.contains(edge.b);
-        })
-        .toList(growable: false),
+    edges: _withoutBlocked(edges, blocked),
+    movement: _MovementRule.roadTempo,
     armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
   );
 }
 
-_HexTrialSpec _hexForestSpec() {
+_HexTrialSpec _coastalLandingSpec() {
+  final blocked = {'H11', 'H22', 'H33'};
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
-    forest: {'H10', 'H20', 'H21', 'H30', 'H33', 'H34', 'H24'},
+    port: {'H40', 'H24', 'H04'},
+    coast: {'H30', 'H31', 'H20', 'H21', 'H12', 'H13', 'H14', 'H23', 'H34'},
+    blocked: blocked,
   );
   return _HexTrialSpec(
-    name: MapTestType.hexForest.title,
-    feel: 'OHM with visually noisy cover and side paths.',
-    worksNow: MapTestType.hexForest.worksNow,
-    notProven: MapTestType.hexForest.notProven,
-    background: const Color(0xFF193226),
+    name: MapTestType.coastalLanding.title,
+    feel: 'Ports connect as landings; coast shows stepping stones.',
+    worksNow: MapTestType.coastalLanding.worksNow,
+    notProven: MapTestType.coastalLanding.notProven,
+    background: const Color(0xFF13364A),
+    routeColor: const Color(0x99E9F4FF),
+    tiles: tiles,
+    edges: _withoutBlocked(edges, blocked),
+    movement: _MovementRule.portHop,
+    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+  );
+}
+
+_HexTrialSpec _forestScreenSpec() {
+  final (tiles, edges) = _hexGrid(
+    rows: 5,
+    cols: 5,
+    forest: {'H10', 'H20', 'H21', 'H30', 'H32', 'H33', 'H24', 'H14'},
+    road: {'H40', 'H31', 'H22', 'H13', 'H04'},
+    supply: {'H21', 'H33'},
+  );
+  return _HexTrialSpec(
+    name: MapTestType.forestScreen.title,
+    feel: 'Forest screen masks the flank without hiding the map.',
+    worksNow: MapTestType.forestScreen.worksNow,
+    notProven: MapTestType.forestScreen.notProven,
+    background: const Color(0xFF173023),
     routeColor: const Color(0x778FD19E),
     tiles: tiles,
     edges: edges,
@@ -1025,105 +1140,92 @@ _HexTrialSpec _hexForestSpec() {
   );
 }
 
-_HexTrialSpec _hexCoastSpec() {
-  final coast = {'H01', 'H02', 'H03', 'H12', 'H23', 'H34', 'H43'};
-  final blocked = {'H11', 'H22', 'H33'};
+_HexTrialSpec _supplySpineSpec() {
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
-    coast: coast,
-    blocked: blocked,
+    road: {'H40', 'H30', 'H20', 'H21', 'H22', 'H23', 'H14', 'H04'},
+    supply: {'H30', 'H21', 'H23'},
+    forest: {'H11', 'H31', 'H33'},
   );
   return _HexTrialSpec(
-    name: MapTestType.hexCoast.title,
-    feel: 'Island-hop campaign shape without old IC clutter.',
-    worksNow: MapTestType.hexCoast.worksNow,
-    notProven: MapTestType.hexCoast.notProven,
-    background: const Color(0xFF13364A),
-    routeColor: const Color(0x99E9F4FF),
-    tiles: tiles,
-    edges: edges
-        .where((edge) => !blocked.contains(edge.a) && !blocked.contains(edge.b))
-        .toList(growable: false),
-    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
-  );
-}
-
-_HexTrialSpec _hexAmbushSpec() {
-  final (tiles, edges) = _hexGrid(
-    rows: 5,
-    cols: 5,
-    centerHill: true,
-    forest: {'H11', 'H13', 'H20', 'H24', 'H31', 'H33'},
-  );
-  return _HexTrialSpec(
-    name: MapTestType.hexAmbush.title,
-    feel: 'Center looks tempting; edges threaten collapse.',
-    worksNow: MapTestType.hexAmbush.worksNow,
-    notProven: MapTestType.hexAmbush.notProven,
-    background: const Color(0xFF2C2433),
-    routeColor: const Color(0x99E7D8FF),
+    name: MapTestType.supplySpine.title,
+    feel: 'Depots create a line worth protecting.',
+    worksNow: MapTestType.supplySpine.worksNow,
+    notProven: MapTestType.supplySpine.notProven,
+    background: const Color(0xFF243420),
+    routeColor: const Color(0x99D1F2C9),
     tiles: tiles,
     edges: edges,
+    movement: _MovementRule.roadTempo,
     armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
   );
 }
 
-_HexTrialSpec _hexRelaySpec() {
+_HexTrialSpec _siegeRingSpec() {
+  final fort = {'H22'};
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
-    road: {'H40', 'H30', 'H21', 'H12', 'H03', 'H31', 'H22', 'H13'},
+    fort: fort,
+    road: {'H21', 'H12', 'H23', 'H32', 'H31'},
+    hill: {'H11', 'H13', 'H31', 'H33'},
   );
   return _HexTrialSpec(
-    name: MapTestType.hexRelay.title,
-    feel: 'Road-like relay line: does tempo read instantly?',
-    worksNow: MapTestType.hexRelay.worksNow,
-    notProven: MapTestType.hexRelay.notProven,
-    background: const Color(0xFF26313A),
+    name: MapTestType.siegeRing.title,
+    feel: 'Center fort blocks movement; ring roads invite encirclement.',
+    worksNow: MapTestType.siegeRing.worksNow,
+    notProven: MapTestType.siegeRing.notProven,
+    background: const Color(0xFF302826),
     routeColor: const Color(0x99FFD166),
     tiles: tiles,
-    edges: edges,
+    edges: _withoutBlocked(edges, fort),
+    movement: _MovementRule.roadTempo,
     armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
   );
 }
 
-_HexTrialSpec _commanderClashSpec() {
-  final (tiles, edges) = _hexGrid(rows: 4, cols: 5, centerHill: true);
-  return _HexTrialSpec(
-    name: MapTestType.commanderClash.title,
-    feel: 'General visibility test: commanders should feel like real targets.',
-    worksNow: MapTestType.commanderClash.worksNow,
-    notProven: MapTestType.commanderClash.notProven,
-    background: const Color(0xFF322036),
-    routeColor: const Color(0x99E7D8FF),
-    tiles: tiles,
-    edges: edges,
-    armies: const [
-      _TrialArmy(
-        side: _ArmySide.rome,
-        name: 'Consular Guard',
-        shortName: 'CMD',
-        generalName: 'Lucius Drusus',
-        commandTrait: 'High King',
-        commandHint: 'Command anchor; losing him should feel catastrophic.',
-        startTileId: 'H30',
-        color: Color(0xFFC14A2C),
-        icon: Icons.military_tech_rounded,
-      ),
-      _TrialArmy(
-        side: _ArmySide.enemy,
-        name: 'Oathbreaker Guard',
-        shortName: 'FOE',
-        generalName: 'Morcant',
-        commandTrait: 'Veteran Commander',
-        commandHint: 'Known enemy commander; watch his threat range.',
-        startTileId: 'H04',
-        color: Color(0xFF7B2CBF),
-        icon: Icons.visibility_rounded,
-      ),
-    ],
+_HexTrialSpec _threeApproachesSpec() {
+  final blocked = {'H22'};
+  final (tiles, edges) = _hexGrid(
+    rows: 5,
+    cols: 5,
+    blocked: blocked,
+    road: {
+      'H40',
+      'H30',
+      'H20',
+      'H10',
+      'H00',
+      'H41',
+      'H32',
+      'H23',
+      'H14',
+      'H42',
+      'H33',
+      'H24',
+    },
+    bridge: {'H20', 'H23', 'H33'},
+    hill: {'H12', 'H32'},
   );
+  return _HexTrialSpec(
+    name: MapTestType.threeApproaches.title,
+    feel: 'Three obvious routes: left road, center risk, right flank.',
+    worksNow: MapTestType.threeApproaches.worksNow,
+    notProven: MapTestType.threeApproaches.notProven,
+    background: const Color(0xFF26313A),
+    routeColor: const Color(0x99CDE8FF),
+    tiles: tiles,
+    edges: _withoutBlocked(edges, blocked),
+    movement: _MovementRule.roadTempo,
+    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+  );
+}
+
+List<_HexEdge> _withoutBlocked(List<_HexEdge> edges, Set<String> blocked) {
+  return edges
+      .where((edge) => !blocked.contains(edge.a) && !blocked.contains(edge.b))
+      .toList(growable: false);
 }
 
 List<_TrialArmy> _armies({
@@ -1161,10 +1263,14 @@ List<_TrialArmy> _armies({
   required int cols,
   Set<String> blocked = const {},
   Set<String> river = const {},
+  Set<String> bridge = const {},
   Set<String> forest = const {},
   Set<String> coast = const {},
+  Set<String> port = const {},
   Set<String> road = const {},
   Set<String> hill = const {},
+  Set<String> fort = const {},
+  Set<String> supply = const {},
   bool centerHill = false,
 }) {
   final tiles = <_HexTile>[];
@@ -1173,6 +1279,10 @@ List<_TrialArmy> _armies({
     for (var col = 0; col < cols; col++) {
       final id = 'H$row$col';
       final isBlocked = blocked.contains(id);
+      final isFort = fort.contains(id);
+      final isPort = port.contains(id);
+      final isBridge = bridge.contains(id);
+      final isSupply = supply.contains(id);
       final isRiver = river.contains(id);
       final isForest = forest.contains(id);
       final isCoast = coast.contains(id);
@@ -1186,8 +1296,16 @@ List<_TrialArmy> _armies({
           label: '${row + 1}.${col + 1}',
           x: 0.12 + col * (0.76 / (cols - 1)) + (row.isOdd ? 0.06 : 0),
           y: 0.14 + row * (0.72 / (rows - 1)),
-          terrain: isBlocked
+          terrain: isFort
+              ? 'Fort'
+              : isBlocked
               ? 'Blocked ridge'
+              : isBridge
+              ? 'Bridge'
+              : isPort
+              ? 'Port'
+              : isSupply
+              ? 'Supply depot'
               : isRiver
               ? 'River crossing'
               : isCoast
@@ -1199,8 +1317,16 @@ List<_TrialArmy> _armies({
               : isHill
               ? 'Command hill'
               : 'Open field',
-          color: isBlocked
+          color: isFort
+              ? const Color(0xFF6A576E)
+              : isBlocked
               ? const Color(0xFF555C65)
+              : isBridge
+              ? const Color(0xFFB88A42)
+              : isPort
+              ? const Color(0xFF1F6F83)
+              : isSupply
+              ? const Color(0xFF7A8B35)
               : isRiver
               ? const Color(0xFF2E6F87)
               : isCoast
@@ -1212,6 +1338,27 @@ List<_TrialArmy> _armies({
               : isHill
               ? const Color(0xFF8A6A3E)
               : const Color(0xFF3D7A4F),
+          kind: isFort
+              ? _HexKind.fort
+              : isBlocked
+              ? _HexKind.ridge
+              : isBridge
+              ? _HexKind.bridge
+              : isPort
+              ? _HexKind.port
+              : isSupply
+              ? _HexKind.supply
+              : isRiver
+              ? _HexKind.river
+              : isCoast
+              ? _HexKind.port
+              : isForest
+              ? _HexKind.forest
+              : isRoad
+              ? _HexKind.road
+              : isHill
+              ? _HexKind.hill
+              : _HexKind.field,
           blocked: isBlocked,
         ),
       );

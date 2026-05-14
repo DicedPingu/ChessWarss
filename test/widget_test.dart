@@ -70,15 +70,15 @@ void main() {
 
     expect(find.text('War Table Trials'), findsOneWidget);
     expect(find.text('TEST'), findsWidgets);
-    expect(find.text('Open Hex March'), findsWidgets);
-    expect(find.text('Wide Front'), findsOneWidget);
-    expect(find.text('River Fork'), findsOneWidget);
-    expect(find.text('Ridge Gate'), findsOneWidget);
-    expect(find.text('Forest Net'), findsOneWidget);
-    expect(find.text('Coast Hop'), findsOneWidget);
-    expect(find.text('Ambush Bowl'), findsOneWidget);
-    expect(find.text('Relay Lines'), findsOneWidget);
-    expect(find.text('Commander Clash'), findsOneWidget);
+    expect(find.text('Road Tempo'), findsWidgets);
+    expect(find.text('Twin Crossing'), findsOneWidget);
+    expect(find.text('Crown Hill'), findsOneWidget);
+    expect(find.text('Valley Gate'), findsOneWidget);
+    expect(find.text('Coastal Landing'), findsOneWidget);
+    expect(find.text('Forest Screen'), findsOneWidget);
+    expect(find.text('Supply Spine'), findsOneWidget);
+    expect(find.text('Siege Ring'), findsOneWidget);
+    expect(find.text('Three Approaches'), findsOneWidget);
     expect(find.text('Logistics & Siege'), findsNothing);
     expect(find.text('Square Warboard'), findsNothing);
     expect(find.text('Province Web'), findsNothing);
@@ -112,12 +112,12 @@ void main() {
     await _pumpApp(tester);
 
     await _enterProvingTables(tester);
-    await tester.tap(find.text('Open Hex March').first);
+    await tester.tap(find.text('Road Tempo').first);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('war-table-open-test')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Open Hex March Test'), findsOneWidget);
+    expect(find.text('Road Tempo Test'), findsOneWidget);
     expect(find.textContaining('Turn 1: Roman Vanguard'), findsOneWidget);
     expect(find.text('Move Here'), findsNothing);
 
@@ -184,21 +184,21 @@ void main() {
     expect(find.text('Victory and Policy'), findsOneWidget);
   });
 
-  testWidgets('commander clash makes generals visible in the test bed', (
+  testWidgets('siege ring makes fort pressure visible in the test bed', (
     WidgetTester tester,
   ) async {
     await _pumpApp(tester);
 
     await _enterProvingTables(tester);
 
-    await tester.tap(find.text('Commander Clash').first);
+    await tester.tap(find.text('Siege Ring').first);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('war-table-open-test')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Commander Clash Test'), findsOneWidget);
-    expect(find.textContaining('Lucius Drusus'), findsOneWidget);
-    expect(find.textContaining('Command anchor'), findsOneWidget);
+    expect(find.text('Siege Ring Test'), findsOneWidget);
+    expect(find.textContaining('encircle'), findsWidgets);
+    expect(find.byIcon(Icons.fort_rounded), findsWidgets);
     expect(find.textContaining('Tap active army'), findsOneWidget);
     expect(find.text('Move Here'), findsNothing);
   });
