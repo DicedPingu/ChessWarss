@@ -3,112 +3,69 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 enum MapTestType {
-  roadTempo,
-  twinCrossing,
-  crownHill,
-  valleyGate,
-  coastalLanding,
-  forestScreen,
-  supplySpine,
-  siegeRing,
-  threeApproaches,
-  commandPiece,
-  generalCohort,
-  marchColumn,
+  tiltedIsles,
+  cohortStack,
+  generalDuel,
+  brokenCauseway,
+  threeCrowns,
+  fourHouses,
 }
 
 extension MapTestTypeCopy on MapTestType {
   String get cardTitle => switch (this) {
-    MapTestType.roadTempo => 'Road Tempo',
-    MapTestType.twinCrossing => 'Twin Crossing',
-    MapTestType.crownHill => 'Crown Hill',
-    MapTestType.valleyGate => 'Valley Gate',
-    MapTestType.coastalLanding => 'Coastal Landing',
-    MapTestType.forestScreen => 'Forest Screen',
-    MapTestType.supplySpine => 'Supply Spine',
-    MapTestType.siegeRing => 'Siege Ring',
-    MapTestType.threeApproaches => 'Three Approaches',
-    MapTestType.commandPiece => 'Command Piece',
-    MapTestType.generalCohort => 'General + Cohort',
-    MapTestType.marchColumn => 'March Column',
+    MapTestType.tiltedIsles => 'Tilted Isles',
+    MapTestType.cohortStack => 'Cohort Stack',
+    MapTestType.generalDuel => 'General Duel',
+    MapTestType.brokenCauseway => 'Broken Causeway',
+    MapTestType.threeCrowns => 'Three Crowns',
+    MapTestType.fourHouses => 'Four Houses',
   };
 
   String get title => cardTitle;
 
   String get subtitle => switch (this) {
-    MapTestType.roadTempo => 'Fast road',
-    MapTestType.twinCrossing => 'Two bridges',
-    MapTestType.crownHill => 'High ground',
-    MapTestType.valleyGate => 'Gate + flank',
-    MapTestType.coastalLanding => 'Ports',
-    MapTestType.forestScreen => 'Hidden flank',
-    MapTestType.supplySpine => 'Supply line',
-    MapTestType.siegeRing => 'Encircle',
-    MapTestType.threeApproaches => '3 routes',
-    MapTestType.commandPiece => 'One commander',
-    MapTestType.generalCohort => 'Full stack',
-    MapTestType.marchColumn => 'Moving column',
+    MapTestType.tiltedIsles => 'Angled board',
+    MapTestType.cohortStack => 'Full army tile',
+    MapTestType.generalDuel => 'Two leaders',
+    MapTestType.brokenCauseway => 'Air gaps',
+    MapTestType.threeCrowns => '3 factions',
+    MapTestType.fourHouses => '4 factions',
   };
 
   String get worksNow => switch (this) {
-    MapTestType.roadTempo => 'Road tiles can chain one extra road step.',
-    MapTestType.twinCrossing => 'River blocks; bridges open clear fights.',
-    MapTestType.crownHill => 'Center hill pulls both armies into contact.',
-    MapTestType.valleyGate => 'Short gate or long flank is readable.',
-    MapTestType.coastalLanding => 'Ports act like connected landing points.',
-    MapTestType.forestScreen => 'Forest cover creates a visible side screen.',
-    MapTestType.supplySpine => 'Depots make the safe line obvious.',
-    MapTestType.siegeRing => 'Ring roads show how to encircle a fort.',
-    MapTestType.threeApproaches => 'Left, center, right routes are distinct.',
-    MapTestType.commandPiece => 'Army is one readable general on a raised hex.',
-    MapTestType.generalCohort => 'General fronts K/Q/R/B/N/P on the same hex.',
-    MapTestType.marchColumn =>
-      'General leads, pieces trail behind as a moving group.',
+    MapTestType.tiltedIsles => 'Raised hexes float over empty air.',
+    MapTestType.cohortStack => 'General fronts K/Q/R/B/N/P on one hex.',
+    MapTestType.generalDuel => 'Only the generals represent armies.',
+    MapTestType.brokenCauseway => 'Gaps make blocked space obvious.',
+    MapTestType.threeCrowns => 'Three armies can cycle turns without overflow.',
+    MapTestType.fourHouses => 'Four factions stay visible on a phone panel.',
   };
 
   String get notProven => switch (this) {
-    MapTestType.roadTempo => 'May be too fast.',
-    MapTestType.twinCrossing => 'May become bridge camping.',
-    MapTestType.crownHill => 'May overvalue center.',
-    MapTestType.valleyGate => 'May still feel solved.',
-    MapTestType.coastalLanding => 'May need naval rules later.',
-    MapTestType.forestScreen => 'May hide too much.',
-    MapTestType.supplySpine => 'May become escort busywork.',
-    MapTestType.siegeRing => 'May need defender tools.',
-    MapTestType.threeApproaches => 'May be too abstract.',
-    MapTestType.commandPiece => 'May hide army composition.',
-    MapTestType.generalCohort => 'May become crowded on phones.',
-    MapTestType.marchColumn => 'May imply separate units too strongly.',
+    MapTestType.tiltedIsles => 'Angle may fight touch accuracy.',
+    MapTestType.cohortStack => 'May be crowded on small hexes.',
+    MapTestType.generalDuel => 'May hide army composition.',
+    MapTestType.brokenCauseway => 'May feel too puzzle-like.',
+    MapTestType.threeCrowns => 'May need clearer diplomacy rules.',
+    MapTestType.fourHouses => 'May become noisy in a real campaign.',
   };
 
   String get direction => switch (this) {
-    MapTestType.roadTempo => 'Baseline movement feel.',
-    MapTestType.twinCrossing => 'Crossing pressure.',
-    MapTestType.crownHill => 'Center objective.',
-    MapTestType.valleyGate => 'Choke vs flank.',
-    MapTestType.coastalLanding => 'Operational landing.',
-    MapTestType.forestScreen => 'Ambush readability.',
-    MapTestType.supplySpine => 'Line protection.',
-    MapTestType.siegeRing => 'Fort pressure.',
-    MapTestType.threeApproaches => 'Route comparison.',
-    MapTestType.commandPiece => 'General-only army read.',
-    MapTestType.generalCohort => 'General plus full chess army.',
-    MapTestType.marchColumn => 'Formation and movement read.',
+    MapTestType.tiltedIsles => 'Isometric table read.',
+    MapTestType.cohortStack => 'Army-as-one-piece test.',
+    MapTestType.generalDuel => 'General token clarity.',
+    MapTestType.brokenCauseway => 'Walkable vs empty air.',
+    MapTestType.threeCrowns => 'Multi-side turn flow.',
+    MapTestType.fourHouses => 'Overflow stress test.',
   };
 
   IconData get icon => switch (this) {
-    MapTestType.roadTempo => Icons.alt_route_rounded,
-    MapTestType.twinCrossing => Icons.water_rounded,
-    MapTestType.crownHill => Icons.landscape_rounded,
-    MapTestType.valleyGate => Icons.terrain_rounded,
-    MapTestType.coastalLanding => Icons.anchor_rounded,
-    MapTestType.forestScreen => Icons.forest_rounded,
-    MapTestType.supplySpine => Icons.grass_rounded,
-    MapTestType.siegeRing => Icons.fort_rounded,
-    MapTestType.threeApproaches => Icons.call_split_rounded,
-    MapTestType.commandPiece => Icons.military_tech_rounded,
-    MapTestType.generalCohort => Icons.groups_3_rounded,
-    MapTestType.marchColumn => Icons.double_arrow_rounded,
+    MapTestType.tiltedIsles => Icons.view_in_ar_rounded,
+    MapTestType.cohortStack => Icons.groups_3_rounded,
+    MapTestType.generalDuel => Icons.military_tech_rounded,
+    MapTestType.brokenCauseway => Icons.hexagon_rounded,
+    MapTestType.threeCrowns => Icons.change_circle_rounded,
+    MapTestType.fourHouses => Icons.dashboard_customize_rounded,
   };
 }
 
@@ -205,10 +162,9 @@ class _MapTestScreenState extends State<MapTestScreen> {
   void _reset() {
     _spec = _specFor(widget.type);
     _armyTileBySide = {
-      _ArmySide.rome: _spec.army(_ArmySide.rome).startTileId,
-      _ArmySide.enemy: _spec.army(_ArmySide.enemy).startTileId,
+      for (final army in _spec.armies) army.side: army.startTileId,
     };
-    _activeSide = _ArmySide.rome;
+    _activeSide = _spec.armies.first.side;
     _selectedSide = null;
     _turn = 1;
     _log = 'Select the glowing army, then tap a lit hex.';
@@ -263,9 +219,7 @@ class _MapTestScreenState extends State<MapTestScreen> {
         _log =
             '${attacker.name} moved to ${tile.label}. Turn auto-ended. Select the next army.';
       }
-      _activeSide = _activeSide == _ArmySide.rome
-          ? _ArmySide.enemy
-          : _ArmySide.rome;
+      _activeSide = _spec.nextSideAfter(_activeSide);
       _turn += 1;
     });
   }
@@ -297,6 +251,7 @@ class _HexTrialBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final angle = spec.boardAngle;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: spec.background,
@@ -316,9 +271,14 @@ class _HexTrialBoard extends StatelessWidget {
           builder: (context, constraints) {
             final size = constraints.biggest.shortestSide;
             final tileSize = spec.tileSizeFor(size);
-            return Stack(
+            final board = Stack(
               fit: StackFit.expand,
               children: [
+                CustomPaint(
+                  painter: _HexAirPainter(spec: spec),
+                  isComplex: true,
+                  willChange: false,
+                ),
                 CustomPaint(
                   painter: _HexRoutePainter(spec: spec),
                   isComplex: true,
@@ -341,6 +301,13 @@ class _HexTrialBoard extends StatelessWidget {
                     ),
                   ),
               ],
+            );
+            return Transform.rotate(
+              angle: angle,
+              child: Transform.scale(
+                scale: angle == 0 ? 1 : 0.92,
+                child: board,
+              ),
             );
           },
         ),
@@ -410,6 +377,16 @@ class _HexTrialTile extends StatelessWidget {
                 ),
               ),
               shadows: [
+                const BoxShadow(
+                  color: Color(0xAA05080C),
+                  blurRadius: 0,
+                  offset: Offset(5, 7),
+                ),
+                const BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 12,
+                  offset: Offset(0, 7),
+                ),
                 if (activeArmy || reachable)
                   BoxShadow(
                     color: borderColor.withValues(alpha: 0.42),
@@ -833,107 +810,135 @@ class _HexCommandPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = selectedSide == activeArmy.side;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6E7C8),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF3D1D13), width: 2),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 0,
-            offset: Offset(4, 5),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxHeight < 360;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF6E7C8),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF3D1D13), width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x66000000),
+                blurRadius: 0,
+                offset: Offset(4, 5),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              spec.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF3D1D13),
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              spec.feel,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF4C3525),
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _CommandStrip(
-              color: activeArmy.color,
-              text:
-                  'Turn $turn: ${activeArmy.name} at ${activeTile.label}${selected ? ' - choose target' : ' - select army'}',
-            ),
-            const SizedBox(height: 8),
-            _GeneralCard(army: activeArmy),
-            const SizedBox(height: 8),
-            _InfoLine(
-              label: 'Controls',
-              text:
-                  'Tap active army -> tap lit hex. Moving or attacking auto-ends the turn. Other taps clear selection.',
-            ),
-            _InfoLine(label: 'Works', text: spec.worksNow),
-            _InfoLine(label: 'Watch', text: spec.notProven),
-            const SizedBox(height: 8),
-            Expanded(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF8E6),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF8D6B48)),
+          child: Padding(
+            padding: EdgeInsets.all(compact ? 8 : 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  spec.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: const Color(0xFF3D1D13),
+                    fontSize: compact ? 18 : 22,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Text(
-                      log,
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF3D1D13),
-                        fontWeight: FontWeight.w900,
-                        height: 1.14,
+                SizedBox(height: compact ? 2 : 4),
+                Text(
+                  spec.feel,
+                  maxLines: compact ? 1 : 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF4C3525),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: compact ? 5 : 8),
+                _CommandStrip(
+                  color: activeArmy.color,
+                  compact: compact,
+                  text:
+                      'Turn $turn: ${activeArmy.name} at ${activeTile.label}${selected ? ' - choose target' : ' - select army'}',
+                ),
+                SizedBox(height: compact ? 5 : 8),
+                if (!compact) ...[
+                  _GeneralCard(army: activeArmy),
+                  const SizedBox(height: 8),
+                ],
+                _InfoLine(
+                  label: 'Controls',
+                  text: compact
+                      ? 'Tap army -> tap lit hex. Other taps clear.'
+                      : 'Tap active army -> tap lit hex. Moving or attacking auto-ends the turn. Other taps clear selection.',
+                  compact: compact,
+                ),
+                _InfoLine(
+                  label: 'Works',
+                  text: spec.worksNow,
+                  compact: compact,
+                ),
+                if (!compact)
+                  _InfoLine(
+                    label: 'Watch',
+                    text: spec.notProven,
+                    compact: compact,
+                  ),
+                SizedBox(height: compact ? 5 : 8),
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8E6),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF8D6B48)),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(compact ? 6 : 8),
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: Text(
+                          log,
+                          maxLines: compact ? 2 : 4,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: const Color(0xFF3D1D13),
+                            fontSize: compact ? 12 : 14,
+                            fontWeight: FontWeight.w900,
+                            height: 1.14,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+                SizedBox(height: compact ? 4 : 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox.square(
+                    dimension: compact ? 34 : 40,
+                    child: IconButton.filledTonal(
+                      tooltip: 'Reset trial',
+                      onPressed: onReset,
+                      icon: const Icon(Icons.restart_alt_rounded),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton.filledTonal(
-                tooltip: 'Reset trial',
-                onPressed: onReset,
-                icon: const Icon(Icons.restart_alt_rounded),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
 
 class _CommandStrip extends StatelessWidget {
-  const _CommandStrip({required this.color, required this.text});
+  const _CommandStrip({
+    required this.color,
+    required this.text,
+    this.compact = false,
+  });
 
   final Color color;
   final String text;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -944,18 +949,26 @@ class _CommandStrip extends StatelessWidget {
         border: Border.all(color: const Color(0xFF3D1D13), width: 2),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 8 : 10,
+          vertical: compact ? 5 : 7,
+        ),
         child: Row(
           children: [
-            const Icon(Icons.ads_click_rounded, color: Colors.white, size: 18),
+            Icon(
+              Icons.ads_click_rounded,
+              color: Colors.white,
+              size: compact ? 15 : 18,
+            ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 text,
-                maxLines: 2,
+                maxLines: compact ? 1 : 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
+                  fontSize: compact ? 12 : 14,
                   fontWeight: FontWeight.w900,
                   height: 1.12,
                 ),
@@ -1007,10 +1020,15 @@ class _GeneralCard extends StatelessWidget {
 }
 
 class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.label, required this.text});
+  const _InfoLine({
+    required this.label,
+    required this.text,
+    this.compact = false,
+  });
 
   final String label;
   final String text;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -1018,11 +1036,11 @@ class _InfoLine extends StatelessWidget {
       padding: const EdgeInsets.only(top: 3),
       child: Text(
         '$label: $text',
-        maxLines: 2,
+        maxLines: compact ? 1 : 2,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: Color(0xFF4C3525),
-          fontSize: 12.5,
+        style: TextStyle(
+          color: const Color(0xFF4C3525),
+          fontSize: compact ? 11.5 : 12.5,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -1060,6 +1078,33 @@ class _HexRoutePainter extends CustomPainter {
   }
 }
 
+class _HexAirPainter extends CustomPainter {
+  const _HexAirPainter({required this.spec});
+
+  final _HexTrialSpec spec;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final airPaint = Paint()
+      ..color = const Color(0x55212B38)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    for (final gap in spec.airGaps) {
+      final rect = Rect.fromCenter(
+        center: Offset(gap.x * size.width, gap.y * size.height),
+        width: spec.tileSizeFor(size.shortestSide) * 0.78,
+        height: spec.tileSizeFor(size.shortestSide) * 0.78,
+      );
+      canvas.drawPath(const _HexagonBorder().getOuterPath(rect), airPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _HexAirPainter oldDelegate) {
+    return oldDelegate.spec != spec;
+  }
+}
+
 class _HexTrialSpec {
   _HexTrialSpec({
     required this.name,
@@ -1071,8 +1116,10 @@ class _HexTrialSpec {
     required this.tiles,
     required this.edges,
     required this.armies,
+    this.airGaps = const [],
     this.movement = _MovementRule.adjacent,
     this.formationStyle = _FormationStyle.badge,
+    this.boardAngle = 0,
   }) : tileById = Map.unmodifiable({for (final tile in tiles) tile.id: tile}),
        armyBySide = Map.unmodifiable({
          for (final army in armies) army.side: army,
@@ -1087,8 +1134,10 @@ class _HexTrialSpec {
   final List<_HexTile> tiles;
   final List<_HexEdge> edges;
   final List<_TrialArmy> armies;
+  final List<_AirGap> airGaps;
   final _MovementRule movement;
   final _FormationStyle formationStyle;
+  final double boardAngle;
   final Map<String, _HexTile> tileById;
   final Map<_ArmySide, _TrialArmy> armyBySide;
 
@@ -1119,14 +1168,13 @@ class _HexTrialSpec {
         }
       }
     }
-    if (movement == _MovementRule.portHop && tile(id).kind == _HexKind.port) {
-      direct.addAll(
-        tiles
-            .where((tile) => tile.kind == _HexKind.port && tile.id != id)
-            .map((tile) => tile.id),
-      );
-    }
     return direct;
+  }
+
+  _ArmySide nextSideAfter(_ArmySide side) {
+    final index = armies.indexWhere((army) => army.side == side);
+    if (index < 0) return armies.first.side;
+    return armies[(index + 1) % armies.length].side;
   }
 
   double tileSizeFor(double boardSize) {
@@ -1134,9 +1182,16 @@ class _HexTrialSpec {
   }
 }
 
-enum _MovementRule { adjacent, roadTempo, portHop }
+enum _MovementRule { adjacent, roadTempo }
 
 enum _FormationStyle { badge, generalOnly, generalStack, marchColumn }
+
+class _AirGap {
+  const _AirGap(this.x, this.y);
+
+  final double x;
+  final double y;
+}
 
 class _HexTile {
   const _HexTile({
@@ -1160,28 +1215,14 @@ class _HexTile {
   final bool blocked;
 }
 
-enum _HexKind {
-  field,
-  road,
-  bridge,
-  river,
-  ridge,
-  forest,
-  port,
-  hill,
-  fort,
-  supply,
-}
+enum _HexKind { field, road, ridge, forest, hill, fort, supply }
 
 IconData _iconFor(_HexKind kind) {
   return switch (kind) {
     _HexKind.field => Icons.hexagon_rounded,
     _HexKind.road => Icons.alt_route_rounded,
-    _HexKind.bridge => Icons.water_rounded,
-    _HexKind.river => Icons.waves_rounded,
     _HexKind.ridge => Icons.terrain_rounded,
     _HexKind.forest => Icons.forest_rounded,
-    _HexKind.port => Icons.anchor_rounded,
     _HexKind.hill => Icons.landscape_rounded,
     _HexKind.fort => Icons.fort_rounded,
     _HexKind.supply => Icons.grass_rounded,
@@ -1222,7 +1263,7 @@ class _TrialArmy {
   String get generalInitial => generalName.substring(0, 1).toUpperCase();
 }
 
-enum _ArmySide { rome, enemy }
+enum _ArmySide { rome, enemy, gold, ash }
 
 class _HexagonBorder extends OutlinedBorder {
   const _HexagonBorder({super.side});
@@ -1275,357 +1316,457 @@ class _HexagonBorder extends OutlinedBorder {
 
 _HexTrialSpec _specFor(MapTestType type) {
   return switch (type) {
-    MapTestType.roadTempo => _roadTempoSpec(),
-    MapTestType.twinCrossing => _twinCrossingSpec(),
-    MapTestType.crownHill => _crownHillSpec(),
-    MapTestType.valleyGate => _valleyGateSpec(),
-    MapTestType.coastalLanding => _coastalLandingSpec(),
-    MapTestType.forestScreen => _forestScreenSpec(),
-    MapTestType.supplySpine => _supplySpineSpec(),
-    MapTestType.siegeRing => _siegeRingSpec(),
-    MapTestType.threeApproaches => _threeApproachesSpec(),
-    MapTestType.commandPiece => _commandPieceSpec(),
-    MapTestType.generalCohort => _generalCohortSpec(),
-    MapTestType.marchColumn => _marchColumnSpec(),
+    MapTestType.tiltedIsles => _tiltedIslesSpec(),
+    MapTestType.cohortStack => _cohortStackSpec(),
+    MapTestType.generalDuel => _generalDuelSpec(),
+    MapTestType.brokenCauseway => _brokenCausewaySpec(),
+    MapTestType.threeCrowns => _threeCrownsSpec(),
+    MapTestType.fourHouses => _fourHousesSpec(),
   };
 }
 
-_HexTrialSpec _roadTempoSpec() {
+_HexTrialSpec _tiltedIslesSpec() {
   final (tiles, edges) = _hexGrid(
     rows: 5,
-    cols: 5,
-    road: {'H41', 'H30', 'H21', 'H12', 'H02'},
-    supply: {'H31', 'H13'},
-  );
-  return _HexTrialSpec(
-    name: MapTestType.roadTempo.title,
-    feel: 'Fast readable road, slower open flanks.',
-    worksNow: MapTestType.roadTempo.worksNow,
-    notProven: MapTestType.roadTempo.notProven,
-    background: const Color(0xFF1E3C2B),
-    routeColor: const Color(0x99FFD166),
-    tiles: tiles,
-    edges: edges,
-    movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
-  );
-}
-
-_HexTrialSpec _twinCrossingSpec() {
-  final blocked = {'H20', 'H22', 'H24'};
-  final (tiles, edges) = _hexGrid(
-    rows: 5,
-    cols: 5,
-    river: {'H10', 'H11', 'H12', 'H13', 'H30', 'H31', 'H32', 'H33'},
-    bridge: {'H12', 'H32'},
-    blocked: blocked,
-  );
-  return _HexTrialSpec(
-    name: MapTestType.twinCrossing.title,
-    feel: 'Two bridges, one fake center wall, clear crossing fights.',
-    worksNow: MapTestType.twinCrossing.worksNow,
-    notProven: MapTestType.twinCrossing.notProven,
-    background: const Color(0xFF153345),
-    routeColor: const Color(0x99CDE8FF),
-    tiles: tiles,
-    edges: _withoutBlocked(edges, blocked),
-    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
-  );
-}
-
-_HexTrialSpec _crownHillSpec() {
-  final (tiles, edges) = _hexGrid(
-    rows: 5,
-    cols: 5,
-    hill: {'H21', 'H22', 'H23', 'H12', 'H32'},
-    road: {'H41', 'H30', 'H21', 'H12', 'H02'},
-  );
-  return _HexTrialSpec(
-    name: MapTestType.crownHill.title,
-    feel: 'Crown hill is obvious, but roads and sides contest it.',
-    worksNow: MapTestType.crownHill.worksNow,
-    notProven: MapTestType.crownHill.notProven,
-    background: const Color(0xFF2D2A20),
-    routeColor: const Color(0x99E4C988),
-    tiles: tiles,
-    edges: edges,
-    movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
-  );
-}
-
-_HexTrialSpec _valleyGateSpec() {
-  final blocked = {'H11', 'H12', 'H13', 'H31', 'H32', 'H33'};
-  final (tiles, edges) = _hexGrid(
-    rows: 5,
-    cols: 5,
-    blocked: blocked,
-    bridge: {'H22'},
-    road: {'H41', 'H30', 'H22', 'H13', 'H02', 'H42', 'H43', 'H33'},
-  );
-  return _HexTrialSpec(
-    name: MapTestType.valleyGate.title,
-    feel: 'Short gate through the valley, long flank around it.',
-    worksNow: MapTestType.valleyGate.worksNow,
-    notProven: MapTestType.valleyGate.notProven,
-    background: const Color(0xFF302B24),
-    routeColor: const Color(0x99E4C988),
-    tiles: tiles,
-    edges: _withoutBlocked(edges, blocked),
-    movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
-  );
-}
-
-_HexTrialSpec _coastalLandingSpec() {
-  final blocked = {'H11', 'H22', 'H33'};
-  final (tiles, edges) = _hexGrid(
-    rows: 5,
-    cols: 5,
-    port: {'H41', 'H24', 'H02'},
-    coast: {'H30', 'H31', 'H20', 'H21', 'H12', 'H13', 'H23', 'H33'},
-    blocked: blocked,
-  );
-  return _HexTrialSpec(
-    name: MapTestType.coastalLanding.title,
-    feel: 'Ports connect as landings; coast shows stepping stones.',
-    worksNow: MapTestType.coastalLanding.worksNow,
-    notProven: MapTestType.coastalLanding.notProven,
-    background: const Color(0xFF13364A),
-    routeColor: const Color(0x99E9F4FF),
-    tiles: tiles,
-    edges: _withoutBlocked(edges, blocked),
-    movement: _MovementRule.portHop,
-    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
-  );
-}
-
-_HexTrialSpec _forestScreenSpec() {
-  final (tiles, edges) = _hexGrid(
-    rows: 5,
-    cols: 5,
-    forest: {'H10', 'H20', 'H21', 'H30', 'H32', 'H33', 'H24', 'H13'},
-    road: {'H41', 'H31', 'H22', 'H13', 'H02'},
-    supply: {'H21', 'H33'},
-  );
-  return _HexTrialSpec(
-    name: MapTestType.forestScreen.title,
-    feel: 'Forest screen masks the flank without hiding the map.',
-    worksNow: MapTestType.forestScreen.worksNow,
-    notProven: MapTestType.forestScreen.notProven,
-    background: const Color(0xFF173023),
-    routeColor: const Color(0x778FD19E),
-    tiles: tiles,
-    edges: edges,
-    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
-  );
-}
-
-_HexTrialSpec _supplySpineSpec() {
-  final (tiles, edges) = _hexGrid(
-    rows: 5,
-    cols: 5,
-    road: {'H41', 'H30', 'H20', 'H21', 'H22', 'H23', 'H13', 'H02'},
-    supply: {'H30', 'H21', 'H23'},
-    forest: {'H11', 'H31', 'H33'},
-  );
-  return _HexTrialSpec(
-    name: MapTestType.supplySpine.title,
-    feel: 'Depots create a line worth protecting.',
-    worksNow: MapTestType.supplySpine.worksNow,
-    notProven: MapTestType.supplySpine.notProven,
-    background: const Color(0xFF243420),
-    routeColor: const Color(0x99D1F2C9),
-    tiles: tiles,
-    edges: edges,
-    movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
-  );
-}
-
-_HexTrialSpec _siegeRingSpec() {
-  final fort = {'H22'};
-  final (tiles, edges) = _hexGrid(
-    rows: 5,
-    cols: 5,
-    fort: fort,
-    road: {'H21', 'H12', 'H23', 'H32', 'H31'},
-    hill: {'H11', 'H13', 'H31', 'H33'},
-  );
-  return _HexTrialSpec(
-    name: MapTestType.siegeRing.title,
-    feel: 'Center fort blocks movement; ring roads invite encirclement.',
-    worksNow: MapTestType.siegeRing.worksNow,
-    notProven: MapTestType.siegeRing.notProven,
-    background: const Color(0xFF302826),
-    routeColor: const Color(0x99FFD166),
-    tiles: tiles,
-    edges: _withoutBlocked(edges, fort),
-    movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
-  );
-}
-
-_HexTrialSpec _threeApproachesSpec() {
-  final blocked = {'H22'};
-  final (tiles, edges) = _hexGrid(
-    rows: 5,
-    cols: 5,
-    blocked: blocked,
-    road: {
-      'H41',
-      'H30',
-      'H20',
-      'H10',
+    cols: 6,
+    mask: {
       'H01',
-      'H32',
-      'H23',
+      'H02',
+      'H03',
+      'H10',
+      'H11',
+      'H12',
       'H13',
-      'H42',
-      'H33',
+      'H14',
+      'H20',
+      'H21',
+      'H22',
+      'H23',
       'H24',
+      'H25',
+      'H31',
+      'H32',
+      'H33',
+      'H34',
+      'H42',
+      'H43',
+      'H44',
     },
-    bridge: {'H20', 'H23', 'H33'},
-    hill: {'H12', 'H32'},
+    road: {'H42', 'H32', 'H22', 'H13', 'H03'},
+    hill: {'H22', 'H23'},
+    forest: {'H10', 'H11', 'H34'},
+    fort: {'H24'},
   );
   return _HexTrialSpec(
-    name: MapTestType.threeApproaches.title,
-    feel: 'Three obvious routes: left road, center risk, right flank.',
-    worksNow: MapTestType.threeApproaches.worksNow,
-    notProven: MapTestType.threeApproaches.notProven,
-    background: const Color(0xFF26313A),
-    routeColor: const Color(0x99CDE8FF),
-    tiles: tiles,
-    edges: _withoutBlocked(edges, blocked),
-    movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
-  );
-}
-
-_HexTrialSpec _commandPieceSpec() {
-  final (tiles, edges) = _hexGrid(
-    rows: 5,
-    cols: 5,
-    road: {'H41', 'H30', 'H21', 'H12', 'H02'},
-    hill: {'H21', 'H22', 'H12'},
-    forest: {'H10', 'H31', 'H33'},
-    fort: {'H03'},
-  );
-  return _HexTrialSpec(
-    name: MapTestType.commandPiece.title,
-    feel: 'Raised hexes, clean command token, no crowded army blob.',
-    worksNow: MapTestType.commandPiece.worksNow,
-    notProven: MapTestType.commandPiece.notProven,
-    background: const Color(0xFF142232),
-    routeColor: const Color(0x99EAD7A0),
+    name: MapTestType.tiltedIsles.title,
+    feel: 'Low-poly raised land, angled like a tabletop prototype.',
+    worksNow: MapTestType.tiltedIsles.worksNow,
+    notProven: MapTestType.tiltedIsles.notProven,
+    background: const Color(0xFF172332),
+    routeColor: const Color(0x88FFE08A),
     tiles: tiles,
     edges: edges,
+    airGaps: _airGaps(5, 6, tiles),
     movement: _MovementRule.roadTempo,
-    formationStyle: _FormationStyle.generalOnly,
-    armies: _armies(
-      romeStart: 'H41',
-      enemyStart: 'H02',
-      romeGeneralName: 'Livia Varro',
-      enemyGeneralName: 'Brennos',
-    ),
+    formationStyle: _FormationStyle.marchColumn,
+    boardAngle: -0.12,
+    armies: [
+      _army(
+        side: _ArmySide.rome,
+        startTileId: 'H42',
+        color: const Color(0xFFC44234),
+        generalName: 'Livia Varro',
+        icon: Icons.military_tech_rounded,
+      ),
+      _army(
+        side: _ArmySide.enemy,
+        name: 'Bronze Host',
+        shortName: 'BRZ',
+        startTileId: 'H03',
+        color: const Color(0xFF8E5A2A),
+        generalName: 'Cassian Rook',
+        icon: Icons.account_balance_rounded,
+      ),
+    ],
   );
 }
 
-_HexTrialSpec _generalCohortSpec() {
+_HexTrialSpec _cohortStackSpec() {
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
+    mask: {
+      'H01',
+      'H02',
+      'H10',
+      'H11',
+      'H12',
+      'H13',
+      'H20',
+      'H21',
+      'H22',
+      'H23',
+      'H24',
+      'H31',
+      'H32',
+      'H33',
+      'H41',
+      'H42',
+    },
     road: {'H41', 'H31', 'H22', 'H13', 'H02'},
-    supply: {'H31', 'H13'},
     hill: {'H22'},
     forest: {'H10', 'H20', 'H33'},
+    supply: {'H31', 'H13'},
   );
   return _HexTrialSpec(
-    name: MapTestType.generalCohort.title,
-    feel: 'General in front, full chess army packed behind on one hex.',
-    worksNow: MapTestType.generalCohort.worksNow,
-    notProven: MapTestType.generalCohort.notProven,
-    background: const Color(0xFF223421),
+    name: MapTestType.cohortStack.title,
+    feel: 'General in front with the whole chess army on the same tile.',
+    worksNow: MapTestType.cohortStack.worksNow,
+    notProven: MapTestType.cohortStack.notProven,
+    background: const Color(0xFF1C2A20),
     routeColor: const Color(0xAAFFD166),
     tiles: tiles,
     edges: edges,
+    airGaps: _airGaps(5, 5, tiles),
     formationStyle: _FormationStyle.generalStack,
-    armies: _armies(
-      romeStart: 'H41',
-      enemyStart: 'H02',
-      romeGeneralName: 'Livia Varro',
-      enemyGeneralName: 'Mara of the Hill',
-    ),
+    boardAngle: -0.06,
+    armies: [
+      _army(
+        side: _ArmySide.rome,
+        startTileId: 'H41',
+        color: const Color(0xFFB83A2B),
+        generalName: 'Livia Varro',
+        icon: Icons.military_tech_rounded,
+      ),
+      _army(
+        side: _ArmySide.enemy,
+        name: 'Ivory Guard',
+        shortName: 'IVY',
+        startTileId: 'H02',
+        color: const Color(0xFF2E6F87),
+        generalName: 'Mara of the Hill',
+        icon: Icons.shield_rounded,
+      ),
+    ],
   );
 }
 
-_HexTrialSpec _marchColumnSpec() {
-  final blocked = {'H22'};
+_HexTrialSpec _generalDuelSpec() {
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
-    blocked: blocked,
-    road: {'H41', 'H30', 'H20', 'H11', 'H02', 'H31', 'H23', 'H13'},
-    bridge: {'H20', 'H23'},
-    forest: {'H10', 'H32', 'H33'},
-    hill: {'H12'},
+    mask: {
+      'H02',
+      'H10',
+      'H11',
+      'H12',
+      'H13',
+      'H20',
+      'H21',
+      'H22',
+      'H23',
+      'H24',
+      'H31',
+      'H32',
+      'H33',
+      'H41',
+      'H42',
+    },
+    road: {'H41', 'H31', 'H21', 'H12', 'H02'},
+    hill: {'H21', 'H22', 'H23'},
+    fort: {'H12'},
   );
   return _HexTrialSpec(
-    name: MapTestType.marchColumn.title,
-    feel: 'Pieces trail the commander so movement reads like a column.',
-    worksNow: MapTestType.marchColumn.worksNow,
-    notProven: MapTestType.marchColumn.notProven,
-    background: const Color(0xFF272B2F),
-    routeColor: const Color(0xAACDE8FF),
+    name: MapTestType.generalDuel.title,
+    feel: 'Chess-piece generals only; no troop clutter behind them.',
+    worksNow: MapTestType.generalDuel.worksNow,
+    notProven: MapTestType.generalDuel.notProven,
+    background: const Color(0xFF202531),
+    routeColor: const Color(0x88F5D18A),
     tiles: tiles,
-    edges: _withoutBlocked(edges, blocked),
+    edges: edges,
+    airGaps: _airGaps(5, 5, tiles),
     movement: _MovementRule.roadTempo,
-    formationStyle: _FormationStyle.marchColumn,
-    armies: _armies(
-      romeStart: 'H41',
-      enemyStart: 'H02',
-      romeGeneralName: 'Aulus Varro',
-      enemyGeneralName: 'Mara of the Hill',
-    ),
+    formationStyle: _FormationStyle.generalOnly,
+    boardAngle: 0.08,
+    armies: [
+      _army(
+        side: _ArmySide.rome,
+        startTileId: 'H41',
+        color: const Color(0xFFC44234),
+        generalName: 'Aulus Varro',
+        icon: Icons.military_tech_rounded,
+      ),
+      _army(
+        side: _ArmySide.enemy,
+        name: 'Wooden Crown',
+        shortName: 'WDN',
+        startTileId: 'H02',
+        color: const Color(0xFF9A612D),
+        generalName: 'Cassian Rook',
+        icon: Icons.person_rounded,
+      ),
+    ],
   );
 }
 
-List<_HexEdge> _withoutBlocked(List<_HexEdge> edges, Set<String> blocked) {
-  return edges
-      .where((edge) => !blocked.contains(edge.a) && !blocked.contains(edge.b))
-      .toList(growable: false);
+_HexTrialSpec _brokenCausewaySpec() {
+  final (tiles, edges) = _hexGrid(
+    rows: 6,
+    cols: 6,
+    mask: {
+      'H02',
+      'H03',
+      'H11',
+      'H12',
+      'H13',
+      'H14',
+      'H20',
+      'H21',
+      'H22',
+      'H33',
+      'H34',
+      'H35',
+      'H42',
+      'H43',
+      'H44',
+      'H45',
+      'H52',
+      'H53',
+    },
+    road: {'H52', 'H42', 'H33', 'H22', 'H13', 'H03'},
+    hill: {'H22', 'H33'},
+    forest: {'H11', 'H20', 'H45'},
+  );
+  return _HexTrialSpec(
+    name: MapTestType.brokenCauseway.title,
+    feel: 'Walkable islands only; missing hexes are empty air.',
+    worksNow: MapTestType.brokenCauseway.worksNow,
+    notProven: MapTestType.brokenCauseway.notProven,
+    background: const Color(0xFF111C29),
+    routeColor: const Color(0x99D8E2EA),
+    tiles: tiles,
+    edges: edges,
+    airGaps: _airGaps(6, 6, tiles),
+    movement: _MovementRule.roadTempo,
+    formationStyle: _FormationStyle.badge,
+    boardAngle: -0.1,
+    armies: [
+      _army(
+        side: _ArmySide.rome,
+        startTileId: 'H52',
+        color: const Color(0xFFB83A2B),
+        generalName: 'Livia Varro',
+        icon: Icons.flag_rounded,
+      ),
+      _army(
+        side: _ArmySide.enemy,
+        name: 'Ash Banner',
+        shortName: 'ASH',
+        startTileId: 'H03',
+        color: const Color(0xFF5D7187),
+        generalName: 'Severin Ash',
+        icon: Icons.shield_rounded,
+      ),
+    ],
+  );
 }
 
-List<_TrialArmy> _armies({
-  required String romeStart,
-  required String enemyStart,
-  String romeGeneralName = 'Aulus Varro',
-  String enemyGeneralName = 'Brennos',
+_HexTrialSpec _threeCrownsSpec() {
+  final (tiles, edges) = _hexGrid(
+    rows: 5,
+    cols: 5,
+    mask: {
+      'H01',
+      'H02',
+      'H03',
+      'H10',
+      'H11',
+      'H12',
+      'H13',
+      'H20',
+      'H21',
+      'H22',
+      'H23',
+      'H24',
+      'H31',
+      'H32',
+      'H33',
+      'H41',
+      'H42',
+      'H43',
+    },
+    road: {'H41', 'H31', 'H22', 'H13', 'H03', 'H11', 'H20', 'H21'},
+    hill: {'H22'},
+    fort: {'H03'},
+    supply: {'H11', 'H33'},
+  );
+  return _HexTrialSpec(
+    name: MapTestType.threeCrowns.title,
+    feel: 'Three commanders on one raised board, no two-player assumptions.',
+    worksNow: MapTestType.threeCrowns.worksNow,
+    notProven: MapTestType.threeCrowns.notProven,
+    background: const Color(0xFF1E2229),
+    routeColor: const Color(0x99FFD166),
+    tiles: tiles,
+    edges: edges,
+    airGaps: _airGaps(5, 5, tiles),
+    formationStyle: _FormationStyle.generalOnly,
+    boardAngle: 0.06,
+    armies: [
+      _army(
+        side: _ArmySide.rome,
+        startTileId: 'H41',
+        color: const Color(0xFFB83A2B),
+        generalName: 'Livia Varro',
+        icon: Icons.military_tech_rounded,
+      ),
+      _army(
+        side: _ArmySide.enemy,
+        name: 'Ivory Guard',
+        shortName: 'IVY',
+        startTileId: 'H03',
+        color: const Color(0xFF2E6F87),
+        generalName: 'Mara of the Hill',
+        icon: Icons.shield_rounded,
+      ),
+      _army(
+        side: _ArmySide.gold,
+        name: 'Gold Crown',
+        shortName: 'GLD',
+        startTileId: 'H24',
+        color: const Color(0xFFC58B2D),
+        generalName: 'Cassian Rook',
+        icon: Icons.account_balance_rounded,
+      ),
+    ],
+  );
+}
+
+_HexTrialSpec _fourHousesSpec() {
+  final (tiles, edges) = _hexGrid(
+    rows: 6,
+    cols: 6,
+    mask: {
+      'H02',
+      'H03',
+      'H11',
+      'H12',
+      'H13',
+      'H14',
+      'H20',
+      'H21',
+      'H22',
+      'H23',
+      'H24',
+      'H31',
+      'H32',
+      'H33',
+      'H34',
+      'H35',
+      'H42',
+      'H43',
+      'H44',
+      'H52',
+      'H53',
+    },
+    road: {'H52', 'H42', 'H32', 'H22', 'H13', 'H03', 'H20', 'H24', 'H35'},
+    hill: {'H22', 'H23'},
+    forest: {'H11', 'H14', 'H44'},
+    fort: {'H33'},
+  );
+  return _HexTrialSpec(
+    name: MapTestType.fourHouses.title,
+    feel: 'Four generals stress-test the command panel and turn cycling.',
+    worksNow: MapTestType.fourHouses.worksNow,
+    notProven: MapTestType.fourHouses.notProven,
+    background: const Color(0xFF141B24),
+    routeColor: const Color(0x88FFE08A),
+    tiles: tiles,
+    edges: edges,
+    airGaps: _airGaps(6, 6, tiles),
+    movement: _MovementRule.roadTempo,
+    formationStyle: _FormationStyle.generalOnly,
+    boardAngle: -0.08,
+    armies: [
+      _army(
+        side: _ArmySide.rome,
+        startTileId: 'H52',
+        color: const Color(0xFFB83A2B),
+        generalName: 'Livia Varro',
+        icon: Icons.military_tech_rounded,
+      ),
+      _army(
+        side: _ArmySide.enemy,
+        name: 'Ivory Guard',
+        shortName: 'IVY',
+        startTileId: 'H03',
+        color: const Color(0xFF2E6F87),
+        generalName: 'Mara of the Hill',
+        icon: Icons.shield_rounded,
+      ),
+      _army(
+        side: _ArmySide.gold,
+        name: 'Gold Crown',
+        shortName: 'GLD',
+        startTileId: 'H35',
+        color: const Color(0xFFC58B2D),
+        generalName: 'Cassian Rook',
+        icon: Icons.account_balance_rounded,
+      ),
+      _army(
+        side: _ArmySide.ash,
+        name: 'Ash Banner',
+        shortName: 'ASH',
+        startTileId: 'H20',
+        color: const Color(0xFF5D7187),
+        generalName: 'Severin Ash',
+        icon: Icons.person_rounded,
+      ),
+    ],
+  );
+}
+
+List<_AirGap> _airGaps(int rows, int cols, List<_HexTile> tiles) {
+  final filled = tiles.map((tile) => tile.id).toSet();
+  final gaps = <_AirGap>[];
+  for (var row = 0; row < rows; row++) {
+    for (var col = 0; col < cols; col++) {
+      final id = 'H$row$col';
+      if (filled.contains(id)) continue;
+      gaps.add(
+        _AirGap(
+          0.12 + col * (0.76 / (cols - 1)) + (row.isOdd ? 0.06 : 0),
+          0.14 + row * (0.72 / (rows - 1)),
+        ),
+      );
+    }
+  }
+  return gaps;
+}
+
+_TrialArmy _army({
+  required _ArmySide side,
+  required String startTileId,
+  required Color color,
+  required String generalName,
+  required IconData icon,
+  String? name,
+  String? shortName,
+  String commandTrait = 'Commander',
+  String commandHint = 'Prototype general token.',
 }) {
-  return [
-    _TrialArmy(
-      side: _ArmySide.rome,
-      name: 'Roman Vanguard',
-      shortName: 'ROM',
-      generalName: romeGeneralName,
-      commandTrait: 'Veteran',
-      commandHint: 'Fast baseline commander.',
-      startTileId: romeStart,
-      color: const Color(0xFFB83A2B),
-      icon: Icons.flag_rounded,
-    ),
-    _TrialArmy(
-      side: _ArmySide.enemy,
-      name: 'Hill Host',
-      shortName: 'HST',
-      generalName: enemyGeneralName,
-      commandTrait: 'Drummer',
-      commandHint: 'Simple enemy pressure.',
-      startTileId: enemyStart,
-      color: const Color(0xFF2E6F87),
-      icon: Icons.shield_rounded,
-    ),
-  ];
+  return _TrialArmy(
+    side: side,
+    name: name ?? 'Roman Vanguard',
+    shortName: shortName ?? 'ROM',
+    generalName: generalName,
+    commandTrait: commandTrait,
+    commandHint: commandHint,
+    startTileId: startTileId,
+    color: color,
+    icon: icon,
+  );
 }
 
 (List<_HexTile>, List<_HexEdge>) _hexGrid({
@@ -1633,11 +1774,7 @@ List<_TrialArmy> _armies({
   required int cols,
   Set<String>? mask,
   Set<String> blocked = const {},
-  Set<String> river = const {},
-  Set<String> bridge = const {},
   Set<String> forest = const {},
-  Set<String> coast = const {},
-  Set<String> port = const {},
   Set<String> road = const {},
   Set<String> hill = const {},
   Set<String> fort = const {},
@@ -1677,12 +1814,8 @@ List<_TrialArmy> _armies({
       if (activeMask != null && !activeMask.contains(id)) continue;
       final isBlocked = blocked.contains(id);
       final isFort = fort.contains(id);
-      final isPort = port.contains(id);
-      final isBridge = bridge.contains(id);
       final isSupply = supply.contains(id);
-      final isRiver = river.contains(id);
       final isForest = forest.contains(id);
-      final isCoast = coast.contains(id);
       final isRoad = road.contains(id);
       final isHill =
           hill.contains(id) ||
@@ -1697,16 +1830,8 @@ List<_TrialArmy> _armies({
               ? 'Fort'
               : isBlocked
               ? 'Blocked ridge'
-              : isBridge
-              ? 'Bridge'
-              : isPort
-              ? 'Port'
               : isSupply
               ? 'Supply depot'
-              : isRiver
-              ? 'River crossing'
-              : isCoast
-              ? 'Coast hop'
               : isForest
               ? 'Forest'
               : isRoad
@@ -1718,16 +1843,8 @@ List<_TrialArmy> _armies({
               ? const Color(0xFF6A576E)
               : isBlocked
               ? const Color(0xFF555C65)
-              : isBridge
-              ? const Color(0xFFB88A42)
-              : isPort
-              ? const Color(0xFF1F6F83)
               : isSupply
               ? const Color(0xFF7A8B35)
-              : isRiver
-              ? const Color(0xFF2E6F87)
-              : isCoast
-              ? const Color(0xFF287B9A)
               : isForest
               ? const Color(0xFF265F38)
               : isRoad
@@ -1739,16 +1856,8 @@ List<_TrialArmy> _armies({
               ? _HexKind.fort
               : isBlocked
               ? _HexKind.ridge
-              : isBridge
-              ? _HexKind.bridge
-              : isPort
-              ? _HexKind.port
               : isSupply
               ? _HexKind.supply
-              : isRiver
-              ? _HexKind.river
-              : isCoast
-              ? _HexKind.port
               : isForest
               ? _HexKind.forest
               : isRoad

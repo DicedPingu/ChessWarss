@@ -70,18 +70,15 @@ void main() {
 
     expect(find.text('War Table Trials'), findsOneWidget);
     expect(find.text('TEST'), findsWidgets);
-    expect(find.text('Road Tempo'), findsWidgets);
-    expect(find.text('Twin Crossing'), findsOneWidget);
-    expect(find.text('Crown Hill'), findsOneWidget);
-    expect(find.text('Valley Gate'), findsOneWidget);
-    expect(find.text('Coastal Landing'), findsOneWidget);
-    expect(find.text('Forest Screen'), findsOneWidget);
-    expect(find.text('Supply Spine'), findsOneWidget);
-    expect(find.text('Siege Ring'), findsOneWidget);
-    expect(find.text('Three Approaches'), findsOneWidget);
-    expect(find.text('Command Piece'), findsOneWidget);
-    expect(find.text('General + Cohort'), findsOneWidget);
-    expect(find.text('March Column'), findsOneWidget);
+    expect(find.text('Tilted Isles'), findsWidgets);
+    expect(find.text('Cohort Stack'), findsOneWidget);
+    expect(find.text('General Duel'), findsOneWidget);
+    expect(find.text('Broken Causeway'), findsOneWidget);
+    expect(find.text('Three Crowns'), findsOneWidget);
+    expect(find.text('Four Houses'), findsOneWidget);
+    expect(find.text('Road Tempo'), findsNothing);
+    expect(find.text('Twin Crossing'), findsNothing);
+    expect(find.text('Coastal Landing'), findsNothing);
     expect(find.text('Logistics & Siege'), findsNothing);
     expect(find.text('Square Warboard'), findsNothing);
     expect(find.text('Province Web'), findsNothing);
@@ -115,24 +112,24 @@ void main() {
     await _pumpApp(tester);
 
     await _enterProvingTables(tester);
-    await tester.tap(find.text('Road Tempo').first);
+    await tester.tap(find.text('Tilted Isles').first);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('war-table-open-test')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Road Tempo Test'), findsOneWidget);
+    expect(find.text('Tilted Isles Test'), findsOneWidget);
     expect(find.textContaining('Turn 1: Roman Vanguard'), findsOneWidget);
     expect(find.text('Move Here'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('map-test-tile-H41')));
+    await tester.tap(find.byKey(const ValueKey('map-test-tile-H42')));
     await tester.pumpAndSettle();
     expect(find.textContaining('Roman Vanguard selected'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('map-test-tile-H30')));
+    await tester.tap(find.byKey(const ValueKey('map-test-tile-H32')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('moved to 4.1'), findsOneWidget);
-    expect(find.textContaining('Turn 2: Hill Host'), findsOneWidget);
+    expect(find.textContaining('moved to 4.3'), findsOneWidget);
+    expect(find.textContaining('Turn 2: Bronze Host'), findsOneWidget);
     expect(find.textContaining('Turn auto-ended'), findsOneWidget);
   });
 
@@ -187,26 +184,30 @@ void main() {
     expect(find.text('Victory and Policy'), findsOneWidget);
   });
 
-  testWidgets('siege ring makes fort pressure visible in the test bed', (
+  testWidgets('broken causeway uses empty air instead of water tiles', (
     WidgetTester tester,
   ) async {
     await _pumpApp(tester);
 
     await _enterProvingTables(tester);
 
-    await tester.tap(find.text('Siege Ring').first);
+    await tester.tap(find.text('Broken Causeway').first);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('war-table-open-test')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Siege Ring Test'), findsOneWidget);
-    expect(find.textContaining('encircle'), findsWidgets);
-    expect(find.byIcon(Icons.fort_rounded), findsWidgets);
+    expect(find.text('Broken Causeway Test'), findsOneWidget);
+    expect(find.textContaining('empty air'), findsWidgets);
+    expect(find.byIcon(Icons.water_rounded), findsNothing);
+    expect(find.byIcon(Icons.anchor_rounded), findsNothing);
+    expect(find.textContaining('River'), findsNothing);
+    expect(find.textContaining('Port'), findsNothing);
+    expect(find.textContaining('water'), findsNothing);
     expect(find.textContaining('Tap active army'), findsOneWidget);
     expect(find.text('Move Here'), findsNothing);
   });
 
-  testWidgets('general cohort test stacks every chess piece on one hex', (
+  testWidgets('cohort stack test stacks every chess piece on one hex', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 1200));
@@ -215,17 +216,39 @@ void main() {
 
     await _enterProvingTables(tester);
 
-    await tester.tap(find.text('General + Cohort').first);
+    await tester.tap(find.text('Cohort Stack').first);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('war-table-open-test')));
     await tester.pumpAndSettle();
 
-    expect(find.text('General + Cohort Test'), findsOneWidget);
+    expect(find.text('Cohort Stack Test'), findsOneWidget);
     expect(find.textContaining('Livia Varro'), findsOneWidget);
-    expect(find.textContaining('full chess army'), findsOneWidget);
+    expect(find.textContaining('whole chess army'), findsOneWidget);
     for (final piece in ['K', 'Q', 'R', 'B', 'N', 'P']) {
       expect(find.byKey(ValueKey('stack-piece-rome-$piece')), findsOneWidget);
     }
     expect(find.text('Move Here'), findsNothing);
+  });
+
+  testWidgets('four houses supports more than two players without overflow', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await _pumpApp(tester);
+
+    await _enterProvingTables(tester);
+
+    await tester.tap(find.text('Four Houses').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('war-table-open-test')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Four Houses Test'), findsOneWidget);
+    expect(find.byKey(const ValueKey('map-test-army-rome')), findsOneWidget);
+    expect(find.byKey(const ValueKey('map-test-army-enemy')), findsOneWidget);
+    expect(find.byKey(const ValueKey('map-test-army-gold')), findsOneWidget);
+    expect(find.byKey(const ValueKey('map-test-army-ash')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

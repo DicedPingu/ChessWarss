@@ -517,36 +517,24 @@ class _TestCard extends StatelessWidget {
 
 Color _iconColorFor(String title) {
   return switch (title) {
-    'Road Tempo' => const Color(0xFFB88A42),
-    'Twin Crossing' => const Color(0xFF287B9A),
-    'Crown Hill' => const Color(0xFF8A6A3E),
-    'Valley Gate' => const Color(0xFF725E45),
-    'Coastal Landing' => const Color(0xFF1F6F83),
-    'Forest Screen' => const Color(0xFF265F38),
-    'Supply Spine' => const Color(0xFF7A8B35),
-    'Siege Ring' => const Color(0xFF6A576E),
-    'Three Approaches' => const Color(0xFF315F7D),
-    'Command Piece' => const Color(0xFF1C2530),
-    'General + Cohort' => const Color(0xFF9A3028),
-    'March Column' => const Color(0xFF3D6E71),
+    'Tilted Isles' => const Color(0xFF314F68),
+    'Cohort Stack' => const Color(0xFF9A3028),
+    'General Duel' => const Color(0xFF1C2530),
+    'Broken Causeway' => const Color(0xFF5E6470),
+    'Three Crowns' => const Color(0xFFC58B2D),
+    'Four Houses' => const Color(0xFF3D6E71),
     _ => const Color(0xFF7B2D26),
   };
 }
 
 Color _softColorFor(String title) {
   return switch (title) {
-    'Road Tempo' => const Color(0xFFFFF0B7),
-    'Twin Crossing' => const Color(0xFFCDE8FF),
-    'Crown Hill' => const Color(0xFFFFE0A3),
-    'Valley Gate' => const Color(0xFFE7D8C8),
-    'Coastal Landing' => const Color(0xFFC8F2F5),
-    'Forest Screen' => const Color(0xFFCBEAC8),
-    'Supply Spine' => const Color(0xFFE2F4C8),
-    'Siege Ring' => const Color(0xFFE7D8FF),
-    'Three Approaches' => const Color(0xFFD9E8FF),
-    'Command Piece' => const Color(0xFFE4E8EE),
-    'General + Cohort' => const Color(0xFFFFD6BD),
-    'March Column' => const Color(0xFFCFECE3),
+    'Tilted Isles' => const Color(0xFFD9E8FF),
+    'Cohort Stack' => const Color(0xFFFFD6BD),
+    'General Duel' => const Color(0xFFE4E8EE),
+    'Broken Causeway' => const Color(0xFFE1E5EA),
+    'Three Crowns' => const Color(0xFFFFE0A3),
+    'Four Houses' => const Color(0xFFCFECE3),
     _ => const Color(0xFFFFF0B7),
   };
 }
