@@ -1002,7 +1002,7 @@ _HexTrialSpec _roadTempoSpec() {
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
-    road: {'H40', 'H30', 'H21', 'H12', 'H03'},
+    road: {'H41', 'H30', 'H21', 'H12', 'H02'},
     supply: {'H31', 'H13'},
   );
   return _HexTrialSpec(
@@ -1015,7 +1015,7 @@ _HexTrialSpec _roadTempoSpec() {
     tiles: tiles,
     edges: edges,
     movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
   );
 }
 
@@ -1024,18 +1024,7 @@ _HexTrialSpec _twinCrossingSpec() {
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
-    river: {
-      'H10',
-      'H11',
-      'H12',
-      'H13',
-      'H14',
-      'H30',
-      'H31',
-      'H32',
-      'H33',
-      'H34',
-    },
+    river: {'H10', 'H11', 'H12', 'H13', 'H30', 'H31', 'H32', 'H33'},
     bridge: {'H12', 'H32'},
     blocked: blocked,
   );
@@ -1048,7 +1037,7 @@ _HexTrialSpec _twinCrossingSpec() {
     routeColor: const Color(0x99CDE8FF),
     tiles: tiles,
     edges: _withoutBlocked(edges, blocked),
-    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
   );
 }
 
@@ -1057,7 +1046,7 @@ _HexTrialSpec _crownHillSpec() {
     rows: 5,
     cols: 5,
     hill: {'H21', 'H22', 'H23', 'H12', 'H32'},
-    road: {'H40', 'H30', 'H21', 'H12', 'H03'},
+    road: {'H41', 'H30', 'H21', 'H12', 'H02'},
   );
   return _HexTrialSpec(
     name: MapTestType.crownHill.title,
@@ -1069,7 +1058,7 @@ _HexTrialSpec _crownHillSpec() {
     tiles: tiles,
     edges: edges,
     movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
   );
 }
 
@@ -1080,7 +1069,7 @@ _HexTrialSpec _valleyGateSpec() {
     cols: 5,
     blocked: blocked,
     bridge: {'H22'},
-    road: {'H40', 'H30', 'H22', 'H14', 'H04', 'H41', 'H42', 'H43', 'H34'},
+    road: {'H41', 'H30', 'H22', 'H13', 'H02', 'H42', 'H43', 'H33'},
   );
   return _HexTrialSpec(
     name: MapTestType.valleyGate.title,
@@ -1092,7 +1081,7 @@ _HexTrialSpec _valleyGateSpec() {
     tiles: tiles,
     edges: _withoutBlocked(edges, blocked),
     movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
   );
 }
 
@@ -1101,8 +1090,8 @@ _HexTrialSpec _coastalLandingSpec() {
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
-    port: {'H40', 'H24', 'H04'},
-    coast: {'H30', 'H31', 'H20', 'H21', 'H12', 'H13', 'H14', 'H23', 'H34'},
+    port: {'H41', 'H24', 'H02'},
+    coast: {'H30', 'H31', 'H20', 'H21', 'H12', 'H13', 'H23', 'H33'},
     blocked: blocked,
   );
   return _HexTrialSpec(
@@ -1115,7 +1104,7 @@ _HexTrialSpec _coastalLandingSpec() {
     tiles: tiles,
     edges: _withoutBlocked(edges, blocked),
     movement: _MovementRule.portHop,
-    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
   );
 }
 
@@ -1123,8 +1112,8 @@ _HexTrialSpec _forestScreenSpec() {
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
-    forest: {'H10', 'H20', 'H21', 'H30', 'H32', 'H33', 'H24', 'H14'},
-    road: {'H40', 'H31', 'H22', 'H13', 'H04'},
+    forest: {'H10', 'H20', 'H21', 'H30', 'H32', 'H33', 'H24', 'H13'},
+    road: {'H41', 'H31', 'H22', 'H13', 'H02'},
     supply: {'H21', 'H33'},
   );
   return _HexTrialSpec(
@@ -1136,7 +1125,7 @@ _HexTrialSpec _forestScreenSpec() {
     routeColor: const Color(0x778FD19E),
     tiles: tiles,
     edges: edges,
-    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
   );
 }
 
@@ -1144,7 +1133,7 @@ _HexTrialSpec _supplySpineSpec() {
   final (tiles, edges) = _hexGrid(
     rows: 5,
     cols: 5,
-    road: {'H40', 'H30', 'H20', 'H21', 'H22', 'H23', 'H14', 'H04'},
+    road: {'H41', 'H30', 'H20', 'H21', 'H22', 'H23', 'H13', 'H02'},
     supply: {'H30', 'H21', 'H23'},
     forest: {'H11', 'H31', 'H33'},
   );
@@ -1158,7 +1147,7 @@ _HexTrialSpec _supplySpineSpec() {
     tiles: tiles,
     edges: edges,
     movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
   );
 }
 
@@ -1181,7 +1170,7 @@ _HexTrialSpec _siegeRingSpec() {
     tiles: tiles,
     edges: _withoutBlocked(edges, fort),
     movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
   );
 }
 
@@ -1192,15 +1181,14 @@ _HexTrialSpec _threeApproachesSpec() {
     cols: 5,
     blocked: blocked,
     road: {
-      'H40',
+      'H41',
       'H30',
       'H20',
       'H10',
-      'H00',
-      'H41',
+      'H01',
       'H32',
       'H23',
-      'H14',
+      'H13',
       'H42',
       'H33',
       'H24',
@@ -1218,7 +1206,7 @@ _HexTrialSpec _threeApproachesSpec() {
     tiles: tiles,
     edges: _withoutBlocked(edges, blocked),
     movement: _MovementRule.roadTempo,
-    armies: _armies(romeStart: 'H40', enemyStart: 'H04'),
+    armies: _armies(romeStart: 'H41', enemyStart: 'H02'),
   );
 }
 
@@ -1261,6 +1249,7 @@ List<_TrialArmy> _armies({
 (List<_HexTile>, List<_HexEdge>) _hexGrid({
   required int rows,
   required int cols,
+  Set<String>? mask,
   Set<String> blocked = const {},
   Set<String> river = const {},
   Set<String> bridge = const {},
@@ -1273,11 +1262,37 @@ List<_TrialArmy> _armies({
   Set<String> supply = const {},
   bool centerHill = false,
 }) {
+  final activeMask =
+      mask ??
+      (rows == 5 && cols == 5
+          ? const {
+              'H01',
+              'H02',
+              'H03',
+              'H10',
+              'H11',
+              'H12',
+              'H13',
+              'H20',
+              'H21',
+              'H22',
+              'H23',
+              'H24',
+              'H30',
+              'H31',
+              'H32',
+              'H33',
+              'H41',
+              'H42',
+              'H43',
+            }
+          : null);
   final tiles = <_HexTile>[];
   final edges = <_HexEdge>[];
   for (var row = 0; row < rows; row++) {
     for (var col = 0; col < cols; col++) {
       final id = 'H$row$col';
+      if (activeMask != null && !activeMask.contains(id)) continue;
       final isBlocked = blocked.contains(id);
       final isFort = fort.contains(id);
       final isPort = port.contains(id);
@@ -1384,6 +1399,7 @@ List<_TrialArmy> _armies({
   for (var row = 0; row < rows; row++) {
     for (var col = 0; col < cols; col++) {
       final id = 'H$row$col';
+      if (activeMask != null && !activeMask.contains(id)) continue;
       final neighbors = row.isOdd ? oddNeighbors : evenNeighbors;
       for (final offset in neighbors) {
         final nextRow = row + offset[0];
@@ -1392,6 +1408,7 @@ List<_TrialArmy> _armies({
           continue;
         }
         final nextId = 'H$nextRow$nextCol';
+        if (activeMask != null && !activeMask.contains(nextId)) continue;
         if (!edges.any(
           (edge) =>
               (edge.a == id && edge.b == nextId) ||

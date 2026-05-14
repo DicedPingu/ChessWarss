@@ -121,7 +121,7 @@ void main() {
     expect(find.textContaining('Turn 1: Roman Vanguard'), findsOneWidget);
     expect(find.text('Move Here'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('map-test-tile-H40')));
+    await tester.tap(find.byKey(const ValueKey('map-test-tile-H41')));
     await tester.pumpAndSettle();
     expect(find.textContaining('Roman Vanguard selected'), findsOneWidget);
 
