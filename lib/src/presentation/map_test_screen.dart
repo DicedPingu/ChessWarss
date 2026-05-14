@@ -5,6 +5,14 @@ import 'package:flutter/material.dart';
 enum MapTestType { square, hexagonal, provinces, lanes, islands }
 
 extension MapTestTypeCopy on MapTestType {
+  String get cardTitle => switch (this) {
+    MapTestType.square => 'Square Warboard',
+    MapTestType.hexagonal => 'Hex Campaign',
+    MapTestType.provinces => 'Province Web',
+    MapTestType.lanes => 'Three Fronts',
+    MapTestType.islands => 'Island Crossings',
+  };
+
   String get title => switch (this) {
     MapTestType.square => 'Square Warboard',
     MapTestType.hexagonal => 'Hex Campaign',

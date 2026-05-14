@@ -16,6 +16,7 @@ class _MapTestMenuScreenState extends State<MapTestMenuScreen> {
   late final List<_TestEntry> _entries = [
     _TestEntry(
       title: 'Logistics & Siege',
+      cardTitle: 'Logistics',
       subtitle: 'Supply, pillage, fortified camp',
       worksNow: 'Move one hex, forage, pillage, starve, and assault a camp.',
       notProven: 'Balance, AI, persistence, and final battle integration.',
@@ -26,6 +27,7 @@ class _MapTestMenuScreenState extends State<MapTestMenuScreen> {
     for (final type in MapTestType.values)
       _TestEntry(
         title: type.title,
+        cardTitle: type.cardTitle,
         subtitle: type.subtitle,
         worksNow: type.worksNow,
         notProven: type.notProven,
@@ -173,8 +175,8 @@ class _TestCard extends StatelessWidget {
           child: Ink(
             decoration: BoxDecoration(
               color: selected
-                  ? const Color(0xFFFFF0B7)
-                  : const Color(0xFFFFFBEC),
+                  ? _softColorFor(entry.title)
+                  : Color.lerp(_softColorFor(entry.title), Colors.white, 0.62),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: selected
@@ -217,19 +219,20 @@ class _TestCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          entry.title,
-                          maxLines: 1,
+                          entry.cardTitle,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Color(0xFF3D1D13),
                             fontWeight: FontWeight.w900,
-                            fontSize: 14,
+                            fontSize: 13.5,
+                            height: 1.02,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           entry.subtitle,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Color(0xFF644329),
@@ -360,9 +363,22 @@ Color _iconColorFor(String title) {
   };
 }
 
+Color _softColorFor(String title) {
+  return switch (title) {
+    'Logistics & Siege' => const Color(0xFFE7D8FF),
+    'Square Warboard' => const Color(0xFFFFE0A3),
+    'Hex Campaign' => const Color(0xFFD1F2C9),
+    'Province Web' => const Color(0xFFFFC4B8),
+    'Three Fronts' => const Color(0xFFCDE8FF),
+    'Island Crossings' => const Color(0xFFC8F2F5),
+    _ => const Color(0xFFFFF0B7),
+  };
+}
+
 class _TestEntry {
   const _TestEntry({
     required this.title,
+    required this.cardTitle,
     required this.subtitle,
     required this.worksNow,
     required this.notProven,
@@ -372,6 +388,7 @@ class _TestEntry {
   });
 
   final String title;
+  final String cardTitle;
   final String subtitle;
   final String worksNow;
   final String notProven;
