@@ -41,7 +41,7 @@ class _MapTestMenuScreenState extends State<MapTestMenuScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 700;
-            final columns = isWide ? 3 : 2;
+            final columns = isWide ? 5 : 3;
             return Padding(
               padding: EdgeInsets.all(isWide ? 20 : 12),
               child: Column(
@@ -111,7 +111,7 @@ class _WarTableHeader extends StatelessWidget {
             ),
             SizedBox(width: 8),
             Text(
-              'Select -> Open',
+              'Select -> TEST',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -181,7 +181,7 @@ class _FeaturedTrialPanel extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'SELECTED TRIAL',
+                            'TEST',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -207,9 +207,9 @@ class _FeaturedTrialPanel extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                _TrialCallout(label: 'What you test', text: entry.subtitle),
-                _TrialCallout(label: 'Works now', text: entry.worksNow),
-                _TrialCallout(label: 'Watch for', text: entry.notProven),
+                _TrialCallout(label: 'FEEL', text: entry.subtitle),
+                _TrialCallout(label: 'OK', text: entry.worksNow),
+                _TrialCallout(label: 'CUT?', text: entry.notProven),
                 const Spacer(),
                 Row(
                   children: [
@@ -243,7 +243,7 @@ class _FeaturedTrialPanel extends StatelessWidget {
                       onPressed: entry.open,
                       icon: const Icon(Icons.play_arrow_rounded),
                       label: const Text(
-                        'Open Test',
+                        'TEST',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -281,7 +281,7 @@ class _TrialCallout extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 82,
+                width: 44,
                 child: Text(
                   label,
                   maxLines: 1,
@@ -446,8 +446,9 @@ class _TestCard extends StatelessWidget {
                   : null,
             ),
             child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Row(
+              padding: const EdgeInsets.all(4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   DecoratedBox(
                     decoration: BoxDecoration(
@@ -459,51 +460,22 @@ class _TestCard extends StatelessWidget {
                       ),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(7),
-                      child: Icon(entry.icon, color: Colors.white, size: 22),
+                      padding: const EdgeInsets.all(5),
+                      child: Icon(entry.icon, color: Colors.white, size: 18),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entry.cardTitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF3D1D13),
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13.5,
-                            height: 1.02,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          entry.subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF644329),
-                            fontSize: 11.5,
-                            height: 1.1,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 3),
+                  Text(
+                    entry.cardTitle,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF3D1D13),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 10.5,
+                      height: 1,
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    selected
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    size: 18,
-                    color: selected
-                        ? const Color(0xFF7B2D26)
-                        : const Color(0xFF8D6B48),
                   ),
                 ],
               ),
@@ -518,7 +490,13 @@ class _TestCard extends StatelessWidget {
 Color _iconColorFor(String title) {
   return switch (title) {
     'Open Hex March' => const Color(0xFF2F7D4A),
-    'Hex Chokepoints' => const Color(0xFF315F7D),
+    'Wide Front' => const Color(0xFF4D8B3D),
+    'River Fork' => const Color(0xFF287B9A),
+    'Ridge Gate' => const Color(0xFF8A6A3E),
+    'Forest Net' => const Color(0xFF265F38),
+    'Coast Hop' => const Color(0xFF2E6F87),
+    'Ambush Bowl' => const Color(0xFF6D3A82),
+    'Relay Lines' => const Color(0xFFB88A42),
     'Commander Clash' => const Color(0xFF7B2D26),
     _ => const Color(0xFF7B2D26),
   };
@@ -527,7 +505,13 @@ Color _iconColorFor(String title) {
 Color _softColorFor(String title) {
   return switch (title) {
     'Open Hex March' => const Color(0xFFD1F2C9),
-    'Hex Chokepoints' => const Color(0xFFCDE8FF),
+    'Wide Front' => const Color(0xFFE2F4C8),
+    'River Fork' => const Color(0xFFCDE8FF),
+    'Ridge Gate' => const Color(0xFFFFE0A3),
+    'Forest Net' => const Color(0xFFCBEAC8),
+    'Coast Hop' => const Color(0xFFC8F2F5),
+    'Ambush Bowl' => const Color(0xFFE7D8FF),
+    'Relay Lines' => const Color(0xFFFFF0B7),
     'Commander Clash' => const Color(0xFFFFC4B8),
     _ => const Color(0xFFFFF0B7),
   };

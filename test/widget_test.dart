@@ -69,18 +69,24 @@ void main() {
     await _enterProvingTables(tester);
 
     expect(find.text('War Table Trials'), findsOneWidget);
-    expect(find.text('SELECTED TRIAL'), findsOneWidget);
+    expect(find.text('TEST'), findsWidgets);
     expect(find.text('Open Hex March'), findsWidgets);
-    expect(find.text('Hex Chokepoints'), findsOneWidget);
+    expect(find.text('Wide Front'), findsOneWidget);
+    expect(find.text('River Fork'), findsOneWidget);
+    expect(find.text('Ridge Gate'), findsOneWidget);
+    expect(find.text('Forest Net'), findsOneWidget);
+    expect(find.text('Coast Hop'), findsOneWidget);
+    expect(find.text('Ambush Bowl'), findsOneWidget);
+    expect(find.text('Relay Lines'), findsOneWidget);
     expect(find.text('Commander Clash'), findsOneWidget);
     expect(find.text('Logistics & Siege'), findsNothing);
     expect(find.text('Square Warboard'), findsNothing);
     expect(find.text('Province Web'), findsNothing);
     expect(find.text('Three Fronts'), findsNothing);
     expect(find.text('Island Crossings'), findsNothing);
-    expect(find.text('What you test'), findsOneWidget);
-    expect(find.text('Works now'), findsOneWidget);
-    expect(find.text('Watch for'), findsOneWidget);
+    expect(find.text('FEEL'), findsOneWidget);
+    expect(find.text('OK'), findsOneWidget);
+    expect(find.text('CUT?'), findsOneWidget);
   });
 
   testWidgets('war table menu stays inside a phone viewport', (
@@ -93,8 +99,8 @@ void main() {
     await _enterProvingTables(tester);
 
     expect(find.text('CHESSWARSS  |  WAR TABLE TRIALS'), findsOneWidget);
-    expect(find.text('Select -> Open'), findsOneWidget);
-    expect(find.text('Open Test'), findsOneWidget);
+    expect(find.text('Select -> TEST'), findsOneWidget);
+    expect(find.text('TEST'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
