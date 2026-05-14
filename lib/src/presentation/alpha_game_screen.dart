@@ -129,54 +129,65 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
   static const List<_FieldManualSection> _fieldManualSections = [
     _FieldManualSection(
       icon: Icons.auto_awesome_rounded,
-      title: 'New Player Quickstart',
-      summary: 'ChessWarss is a tactical simulation, not standard chess.',
+      title: 'First Minute',
+      summary:
+          'Select an army, move with purpose, then resolve battles on a chess board.',
       points: [
-        'Move army stacks on the World Map to capture settlements.',
-        'When you collide with an enemy, you can Engage or Withdraw.',
-        'Battle is decided by tactics and morale, not just piece count.',
-        'Infantry (Pawns) are your line: they advance forward, strike diagonally, and sidestep only if blocked.',
+        'Tap one of your armies to see legal march tiles and the actions it can take.',
+        'Tap a highlighted tile to march. Moving into an enemy army starts the engage-or-withdraw battle step.',
+        'Tap settlements to inspect ownership, supply, unrest, garrison, levy timing, and defense value.',
+        'End Turn passes tempo to the next player. Staying active matters because idle turns can cost food.',
       ],
     ),
     _FieldManualSection(
-      icon: Icons.terrain_rounded,
-      title: 'Geography & Logistics',
-      summary: 'Terrain shapes your strategy.',
+      icon: Icons.route_rounded,
+      title: 'Logistics Orders',
+      summary:
+          'Food, water, CP, and supply lines decide how far armies can push.',
       points: [
-        'Riverlands, Mountain Passes, and Ancient Ruins dictate chokepoints.',
-        'Rivers are dangerous—cross only at Bridges or Fords.',
-        'Supply and Water are critical—armies starve if cut off from home.',
+        'CP is your action budget. Marching, securing fields, camp work, and settlement actions spend CP.',
+        'Forced March lets the selected army move up to 2 tiles for 1 food, but adds fatigue and cannot start from fortified camp posture.',
+        'Supply Outlook shows reserve food, settlement income, camp income, field income, upkeep, and projected shortage risk.',
+        'Water and supply are separate. Rivers, crossings, settlements, and camps make thirst less dangerous.',
+        'Secure claims an open field for steadier food. Pillage burns an open enemy or unsecured field for immediate army supply.',
+      ],
+    ),
+    _FieldManualSection(
+      icon: Icons.fort_rounded,
+      title: 'Camps and Settlements',
+      summary:
+          'Camps project temporary military support; settlements feed, fund, defend, and reinforce.',
+      points: [
+        'Camp creates a temporary support point for the selected army. It costs CP and food, and cannot be made after forced marching that round.',
+        'Posture cycles Supply, Fortified, and Raiding. Supply helps logistics, Fortified prepares defense and recovery, Raiding pressures enemy land.',
+        'Outpost turns an older camp into longer-lasting support. Break removes your camp and returns the army to open march.',
+        'Tax gives coin and raises unrest. Forage adds food and settlement stock, also raising unrest.',
+        'Garrison strengthens defense and lowers unrest. Levy adds infantry if cooldown and stack size allow. Study improves command if culture and a general allow it.',
       ],
     ),
     _FieldManualSection(
       icon: Icons.military_tech_rounded,
-      title: 'Realistic Combat',
-      summary: 'Units behave like disciplined soldiers.',
+      title: 'Battle Actions',
+      summary:
+          'Battles stay chess-styled, but morale and command matter as much as material.',
       points: [
-        'PAWNS: Move forward, capture diagonally, and sidestep only when the file ahead is blocked.',
-        'CHARGE: SURGE your mobile units forward for a momentum bonus.',
-        'DEFEND: Dig in to become harder to capture (but you cannot move).',
-        'ADVANCE: A slow, coordinated push to close the gap.',
-      ],
-    ),
-    _FieldManualSection(
-      icon: Icons.shield_rounded,
-      title: 'Battle Doctrine',
-      summary: 'Your opening formation matters.',
-      points: [
-        'Choose a Doctrine (formation) based on your army mix.',
-        'Enemy doctrine stays hidden until the lines clash.',
-        'Commanders (Generals) anchor your line—keep them screened.',
+        'Move pieces by selecting one of your units, then tapping a highlighted square. Captures lower enemy morale.',
+        'Pawns move forward, can open with a 2-step move if clear, capture diagonally, and sidestep only when blocked ahead.',
+        'Generals move one square in any direction. Keep them screened because losing commanders can decide the battle.',
+        'Charge is a one-time aggressive stance for armies with enough mobile units. Defend is a one-time holding stance for armies with enough units.',
+        'Advance pushes up to 3 front pawns into contact. High Command is a stronger one-time advance unlocked by capable generals.',
       ],
     ),
     _FieldManualSection(
       icon: Icons.flag_rounded,
-      title: 'Morale & Victory',
-      summary: 'Break their spirit to win.',
+      title: 'Victory and Policy',
+      summary:
+          'Win by breaking armies and choosing what conquest does afterward.',
       points: [
-        'Losing high-value pieces or being flanked drops morale.',
-        'A side with "Collapsed" morale loses immediately.',
-        'Eliminating the enemy commander often ends the fight.',
+        'Morale states explain whether a line is steady, shaken, at retreat risk, or broken.',
+        'A side can lose when all commanders fall, morale collapses, or the tactical result removes its army.',
+        'Capture policy changes what happens when you take settlements: Spare is gentler, Destroy is harsher.',
+        'Simple, optimized, interesting, and chess-styled is the rule: prefer readable choices over hidden simulation noise.',
       ],
     ),
   ];
@@ -5094,12 +5105,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
           content: SizedBox(
             width: 620,
             child: SingleChildScrollView(
-              physics: const NeverScrollableScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Quick reference for ChessWarss systems that are not pure chess.',
+                    'Quick reference for what each player action does and why it matters.',
                   ),
                   const SizedBox(height: 10),
                   for (
@@ -5113,10 +5123,6 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                     ),
                     const SizedBox(height: 8),
                   ],
-                  Text(
-                    'More detail: docs/GAME_WIKI.md',
-                    style: Theme.of(dialogContext).textTheme.bodySmall,
-                  ),
                 ],
               ),
             ),
@@ -6769,7 +6775,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text('ChessWarss - ${widget.gameMode.label} Map'),
+          title: Text('ChessWarss - ${widget.gameMode.label} Campaign'),
           actions: [
             IconButton(
               tooltip: 'Session',
@@ -6777,9 +6783,9 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               icon: const Icon(Icons.shield_rounded),
             ),
             IconButton(
-              tooltip: 'War Lab',
+              tooltip: 'Operations',
               onPressed: _showWarLabSheet,
-              icon: const Icon(Icons.bug_report_rounded),
+              icon: const Icon(Icons.tune_rounded),
             ),
             IconButton(
               tooltip: 'Field Manual',
@@ -7574,24 +7580,419 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                       borderRadius: BorderRadius.circular(10),
                       child: LayoutBuilder(
                         builder: (context, constraints) {
-                          final boardWidth = math.max(
-                            1.0,
-                            math.min(
-                              constraints.maxWidth,
-                              constraints.maxHeight * 1.18,
-                            ),
+                          final availableSize = Size(
+                            math.max(1.0, constraints.maxWidth),
+                            math.max(1.0, constraints.maxHeight),
                           );
-                          final boardHeight = math.max(
-                            1.0,
-                            math.min(constraints.maxHeight, boardWidth * 0.88),
+                          final hexMetrics = _WorldHexMetrics.fit(
+                            availableSize: availableSize,
+                            gridSize: world.size,
                           );
-                          final cellAspectRatio = boardWidth / boardHeight;
+                          final tileWidgets = <Widget>[];
+
+                          for (
+                            var index = 0;
+                            index < world.size * world.size;
+                            index++
+                          ) {
+                            final row = index ~/ world.size;
+                            final col = index % world.size;
+                            final position = BoardPosition(row, col);
+                            final tile = world.tiles[index];
+                            final stack = stackByPosition[position];
+                            final settlement = settlementByPosition[position];
+                            final camp = campByPosition[position];
+                            final territoryStatus =
+                                territoryByPosition[position];
+                            final stackSupplyReport = stack == null
+                                ? null
+                                : supplyReportByStackId[stack.id];
+                            final onSelectedSupplyLine =
+                                selectedSupplyReport?.path.contains(position) ??
+                                false;
+                            final northRiver = row == 0
+                                ? null
+                                : world
+                                      .riverEdgeBetween(
+                                        position,
+                                        position.offset(-1, 0),
+                                      )
+                                      ?.type;
+                            final southRiver = row == world.size - 1
+                                ? null
+                                : world
+                                      .riverEdgeBetween(
+                                        position,
+                                        position.offset(1, 0),
+                                      )
+                                      ?.type;
+                            final westRiver = col == 0
+                                ? null
+                                : world
+                                      .riverEdgeBetween(
+                                        position,
+                                        position.offset(0, -1),
+                                      )
+                                      ?.type;
+                            final eastRiver = col == world.size - 1
+                                ? null
+                                : world
+                                      .riverEdgeBetween(
+                                        position,
+                                        position.offset(0, 1),
+                                      )
+                                      ?.type;
+
+                            final isBlocked =
+                                tile.terrain == TerrainType.blocked;
+                            final isSelected =
+                                stack != null && stack.id == selectedStackId;
+                            final isSelectedSettlement =
+                                selectedSettlementPosition == position &&
+                                (selectedStackId == null || !isSelected);
+                            final isActiveStack =
+                                stack != null &&
+                                stack.ownerId == world.activePlayerId;
+                            final isLegalMove = _worldLegalMoves.contains(
+                              position,
+                            );
+                            final foodTileOwner =
+                                _foodTileOwnerByPosition[position];
+                            final tilePillaged =
+                                (_pillagedTileUntilRound[position] ?? 0) >=
+                                world.round;
+                            final color = _worldTileColor(
+                              row: row,
+                              col: col,
+                              isBlocked: isBlocked,
+                              isSelected: isSelected || isSelectedSettlement,
+                              isLegalMove: isLegalMove,
+                              territoryStatus: territoryStatus,
+                              activePlayerId: world.activePlayerId,
+                              onSelectedSupplyLine: onSelectedSupplyLine,
+                            );
+                            final occupiedColor = stack == null
+                                ? color
+                                : Color.alphaBlend(
+                                    playerColor(stack.ownerId).withValues(
+                                      alpha: isSelected
+                                          ? 0.42
+                                          : (isActiveStack ? 0.34 : 0.24),
+                                    ),
+                                    color,
+                                  );
+                            final settlementUnderSiege =
+                                settlement != null &&
+                                _isSettlementUnderSiege(world, settlement);
+                            final campUnderPressure =
+                                camp != null &&
+                                _isCampUnderPressure(world, camp);
+                            final isLastEnemyFrom =
+                                lastEnemyMove != null &&
+                                lastEnemyMove.from == position;
+                            final isLastEnemyTo =
+                                lastEnemyMove != null &&
+                                lastEnemyMove.to == position;
+                            final ownedFieldByActive =
+                                foodTileOwner == world.activePlayerId &&
+                                !tilePillaged;
+                            final borderColor = isSelected
+                                ? playerColor(
+                                    stack.ownerId,
+                                  ).withValues(alpha: 0.9)
+                                : isSelectedSettlement
+                                ? const Color(0xFF2F6A55)
+                                : isActiveStack
+                                ? playerColor(
+                                    stack.ownerId,
+                                  ).withValues(alpha: 0.85)
+                                : isLastEnemyTo
+                                ? const Color(0xFFA53224)
+                                : isLastEnemyFrom
+                                ? const Color(0xFF8C6C1E)
+                                : (stack != null
+                                      ? playerColor(
+                                          stack.ownerId,
+                                        ).withValues(alpha: 0.56)
+                                      : (settlementUnderSiege ||
+                                                campUnderPressure
+                                            ? const Color(0xFFB33A2E)
+                                            : (territoryStatus?.frontline ??
+                                                  false)
+                                            ? const Color(0xFF7F4D21)
+                                            : (ownedFieldByActive
+                                                  ? const Color(
+                                                      0xFF2F6A55,
+                                                    ).withValues(alpha: 0.6)
+                                                  : Colors.black.withValues(
+                                                      alpha: 0.18,
+                                                    ))));
+                            final borderWidth = isSelected
+                                ? 2.2
+                                : isSelectedSettlement
+                                ? 2.0
+                                : isActiveStack
+                                ? 2.0
+                                : onSelectedSupplyLine
+                                ? 1.9
+                                : (isLastEnemyTo || isLastEnemyFrom)
+                                ? 1.8
+                                : (settlementUnderSiege ||
+                                          campUnderPressure ||
+                                          (territoryStatus?.frontline ?? false)
+                                      ? 1.6
+                                      : 1.0);
+                            final tileRect = hexMetrics.tileRect(position);
+
+                            tileWidgets.add(
+                              Positioned(
+                                left: tileRect.left,
+                                top: tileRect.top,
+                                width: tileRect.width,
+                                height: tileRect.height,
+                                child: GestureDetector(
+                                  onTap: isBlocked
+                                      ? null
+                                      : () => _onWorldTileTap(position),
+                                  child: Stack(
+                                    children: [
+                                      Positioned.fill(
+                                        child: IgnorePointer(
+                                          child: CustomPaint(
+                                            painter: _WorldTilePainter(
+                                              northRiver: northRiver,
+                                              southRiver: southRiver,
+                                              eastRiver: eastRiver,
+                                              westRiver: westRiver,
+                                              fillColor: occupiedColor,
+                                              borderColor: borderColor,
+                                              borderWidth: borderWidth,
+                                              isBlocked: isBlocked,
+                                              glowColor:
+                                                  _reduceEffects ||
+                                                      !isActiveStack
+                                                  ? null
+                                                  : playerColor(stack.ownerId),
+                                              animValue: _riverAnimValue,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned.fill(
+                                        child: ClipPath(
+                                          clipper: const _HexagonClipper(),
+                                          child: Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              8,
+                                              10,
+                                              8,
+                                              10,
+                                            ),
+                                            child: Stack(
+                                              children: [
+                                                if (territoryStatus
+                                                        ?.frontline ??
+                                                    false)
+                                                  Positioned(
+                                                    left: 2,
+                                                    top: 4,
+                                                    child: Container(
+                                                      width: 9,
+                                                      height: 9,
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            const Color(
+                                                              0xFF7A1F14,
+                                                            ).withValues(
+                                                              alpha: 0.78,
+                                                            ),
+                                                        shape: BoxShape.circle,
+                                                        border: Border.all(
+                                                          color: const Color(
+                                                            0xFFFFE0AE,
+                                                          ),
+                                                          width: 0.8,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (onSelectedSupplyLine)
+                                                  Positioned(
+                                                    left: 8,
+                                                    right: 8,
+                                                    top: 2,
+                                                    child: Container(
+                                                      height: 3,
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFC89E3C,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              99,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (isLegalMove &&
+                                                    stack == null)
+                                                  Center(
+                                                    child: Container(
+                                                      width: 18,
+                                                      height: 18,
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            const Color(
+                                                              0xFF2F5D4E,
+                                                            ).withValues(
+                                                              alpha: 0.56,
+                                                            ),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (stack != null)
+                                                  Center(
+                                                    child: FittedBox(
+                                                      fit: BoxFit.scaleDown,
+                                                      child: _buildWorldStackTile(
+                                                        stack: stack,
+                                                        round: world.round,
+                                                        isActive:
+                                                            stack.ownerId ==
+                                                            world
+                                                                .activePlayerId,
+                                                        supplyReport:
+                                                            stackSupplyReport,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (stack == null &&
+                                                    (settlement != null ||
+                                                        camp != null))
+                                                  Center(
+                                                    child:
+                                                        _buildWorldTileSiteSummary(
+                                                          world: world,
+                                                          settlement:
+                                                              settlement,
+                                                          camp: camp,
+                                                        ),
+                                                  ),
+                                                if (foodTileOwner != null ||
+                                                    tilePillaged)
+                                                  Positioned(
+                                                    left: 0,
+                                                    bottom: 0,
+                                                    child: _buildFoodTileMarker(
+                                                      ownerId: foodTileOwner,
+                                                      pillaged: tilePillaged,
+                                                    ),
+                                                  ),
+                                                if (isLastEnemyFrom)
+                                                  const Positioned(
+                                                    left: 0,
+                                                    bottom: 14,
+                                                    child: DecoratedBox(
+                                                      decoration: BoxDecoration(
+                                                        color: Color(
+                                                          0xFF8C6C1E,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.all(
+                                                              Radius.circular(
+                                                                6,
+                                                              ),
+                                                            ),
+                                                      ),
+                                                      child: Padding(
+                                                        padding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 3,
+                                                              vertical: 1,
+                                                            ),
+                                                        child: Text(
+                                                          'FROM',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 7,
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (isLastEnemyTo)
+                                                  const Positioned(
+                                                    right: 0,
+                                                    bottom: 14,
+                                                    child: DecoratedBox(
+                                                      decoration: BoxDecoration(
+                                                        color: Color(
+                                                          0xFFA53224,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.all(
+                                                              Radius.circular(
+                                                                6,
+                                                              ),
+                                                            ),
+                                                      ),
+                                                      child: Padding(
+                                                        padding:
+                                                            EdgeInsets.symmetric(
+                                                              horizontal: 3,
+                                                              vertical: 1,
+                                                            ),
+                                                        child: Text(
+                                                          'TO',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 7,
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (settlement != null)
+                                                  Positioned(
+                                                    top: 0,
+                                                    left: 0,
+                                                    child:
+                                                        _buildSettlementBadge(
+                                                          world,
+                                                          settlement,
+                                                        ),
+                                                  ),
+                                                if (camp != null)
+                                                  Positioned(
+                                                    top: 0,
+                                                    right: 0,
+                                                    child: _buildCampBadge(
+                                                      world,
+                                                      camp,
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
 
                           return Align(
                             alignment: Alignment.center,
                             child: SizedBox(
-                              width: boardWidth,
-                              height: boardHeight,
+                              width: hexMetrics.boardWidth,
+                              height: hexMetrics.boardHeight,
                               child: Stack(
                                 children: [
                                   Positioned.fill(
@@ -7611,426 +8012,14 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                                               selectedStack?.ownerId,
                                           highlightedProvinceId:
                                               focusedProvince?.id,
+                                          highlightedMove: lastEnemyMove,
+                                          hexMetrics: hexMetrics,
                                           reduceEffects: _reduceEffects,
                                         ),
                                       ),
                                     ),
                                   ),
-                                  GridView.builder(
-                                    primary: false,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    padding: EdgeInsets.zero,
-                                    itemCount: world.size * world.size,
-                                    gridDelegate:
-                                        SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: world.size,
-                                          childAspectRatio: cellAspectRatio,
-                                        ),
-                                    itemBuilder: (context, index) {
-                                      final row = index ~/ world.size;
-                                      final col = index % world.size;
-                                      final position = BoardPosition(row, col);
-                                      final tile = world.tiles[index];
-                                      final stack = stackByPosition[position];
-                                      final settlement =
-                                          settlementByPosition[position];
-                                      final camp = campByPosition[position];
-                                      final territoryStatus =
-                                          territoryByPosition[position];
-                                      final stackSupplyReport = stack == null
-                                          ? null
-                                          : supplyReportByStackId[stack.id];
-                                      final onSelectedSupplyLine =
-                                          selectedSupplyReport?.path.contains(
-                                            position,
-                                          ) ??
-                                          false;
-                                      final northRiver = row == 0
-                                          ? null
-                                          : world
-                                                .riverEdgeBetween(
-                                                  position,
-                                                  position.offset(-1, 0),
-                                                )
-                                                ?.type;
-                                      final southRiver = row == world.size - 1
-                                          ? null
-                                          : world
-                                                .riverEdgeBetween(
-                                                  position,
-                                                  position.offset(1, 0),
-                                                )
-                                                ?.type;
-                                      final westRiver = col == 0
-                                          ? null
-                                          : world
-                                                .riverEdgeBetween(
-                                                  position,
-                                                  position.offset(0, -1),
-                                                )
-                                                ?.type;
-                                      final eastRiver = col == world.size - 1
-                                          ? null
-                                          : world
-                                                .riverEdgeBetween(
-                                                  position,
-                                                  position.offset(0, 1),
-                                                )
-                                                ?.type;
-
-                                      final isBlocked =
-                                          tile.terrain == TerrainType.blocked;
-                                      final isSelected =
-                                          stack != null &&
-                                          stack.id == selectedStackId;
-                                      final isSelectedSettlement =
-                                          selectedSettlementPosition ==
-                                              position &&
-                                          (selectedStackId == null ||
-                                              !isSelected);
-                                      final isActiveStack =
-                                          stack != null &&
-                                          stack.ownerId == world.activePlayerId;
-                                      final isLegalMove = _worldLegalMoves
-                                          .contains(position);
-                                      final foodTileOwner =
-                                          _foodTileOwnerByPosition[position];
-                                      final tilePillaged =
-                                          (_pillagedTileUntilRound[position] ??
-                                              0) >=
-                                          world.round;
-                                      final color = _worldTileColor(
-                                        row: row,
-                                        col: col,
-                                        isBlocked: isBlocked,
-                                        isSelected:
-                                            isSelected || isSelectedSettlement,
-                                        isLegalMove: isLegalMove,
-                                        territoryStatus: territoryStatus,
-                                        activePlayerId: world.activePlayerId,
-                                        onSelectedSupplyLine:
-                                            onSelectedSupplyLine,
-                                      );
-                                      final occupiedColor = stack == null
-                                          ? color
-                                          : Color.alphaBlend(
-                                              playerColor(
-                                                stack.ownerId,
-                                              ).withValues(
-                                                alpha: isSelected
-                                                    ? 0.42
-                                                    : (isActiveStack
-                                                          ? 0.34
-                                                          : 0.24),
-                                              ),
-                                              color,
-                                            );
-                                      final settlementUnderSiege =
-                                          settlement != null &&
-                                          _isSettlementUnderSiege(
-                                            world,
-                                            settlement,
-                                          );
-                                      final campUnderPressure =
-                                          camp != null &&
-                                          _isCampUnderPressure(world, camp);
-                                      final isLastEnemyFrom =
-                                          lastEnemyMove != null &&
-                                          lastEnemyMove.from == position;
-                                      final isLastEnemyTo =
-                                          lastEnemyMove != null &&
-                                          lastEnemyMove.to == position;
-                                      final ownedFieldByActive =
-                                          foodTileOwner ==
-                                              world.activePlayerId &&
-                                          !tilePillaged;
-                                      final borderColor = isSelected
-                                          ? playerColor(
-                                              stack.ownerId,
-                                            ).withValues(alpha: 0.9)
-                                          : isSelectedSettlement
-                                          ? const Color(0xFF2F6A55)
-                                          : isActiveStack
-                                          ? playerColor(
-                                              stack.ownerId,
-                                            ).withValues(alpha: 0.85)
-                                          : isLastEnemyTo
-                                          ? const Color(0xFFA53224)
-                                          : isLastEnemyFrom
-                                          ? const Color(0xFF8C6C1E)
-                                          : (stack != null
-                                                ? playerColor(
-                                                    stack.ownerId,
-                                                  ).withValues(alpha: 0.56)
-                                                : (settlementUnderSiege ||
-                                                          campUnderPressure
-                                                      ? const Color(0xFFB33A2E)
-                                                      : (territoryStatus
-                                                                    ?.frontline ??
-                                                                false
-                                                            ? const Color(
-                                                                0xFF7F4D21,
-                                                              )
-                                                            : (ownedFieldByActive
-                                                                  ? const Color(
-                                                                      0xFF2F6A55,
-                                                                    ).withValues(
-                                                                      alpha:
-                                                                          0.6,
-                                                                    )
-                                                                  : Colors.black
-                                                                        .withValues(
-                                                                          alpha:
-                                                                              0.18,
-                                                                        )))));
-                                      final borderWidth = isSelected
-                                          ? 2.2
-                                          : isSelectedSettlement
-                                          ? 2.0
-                                          : isActiveStack
-                                          ? 2.0
-                                          : onSelectedSupplyLine
-                                          ? 1.9
-                                          : (isLastEnemyTo || isLastEnemyFrom)
-                                          ? 1.8
-                                          : (settlementUnderSiege ||
-                                                    campUnderPressure ||
-                                                    (territoryStatus
-                                                            ?.frontline ??
-                                                        false)
-                                                ? 1.6
-                                                : 1.0);
-
-                                      return InkWell(
-                                        onTap: isBlocked
-                                            ? null
-                                            : () => _onWorldTileTap(position),
-                                        child: AnimatedContainer(
-                                          duration: _reduceEffects
-                                              ? Duration.zero
-                                              : const Duration(
-                                                  milliseconds: 180,
-                                                ),
-                                          curve: Curves.easeOutCubic,
-                                          margin: const EdgeInsets.all(1),
-                                          decoration: BoxDecoration(
-                                            color: occupiedColor,
-                                            border: Border.all(
-                                              color: borderColor,
-                                              width: borderWidth,
-                                            ),
-                                            boxShadow:
-                                                _reduceEffects || !isActiveStack
-                                                ? const <BoxShadow>[]
-                                                : [
-                                                    BoxShadow(
-                                                      color: playerColor(
-                                                        stack.ownerId,
-                                                      ).withValues(alpha: 0.35),
-                                                      blurRadius: 7,
-                                                      spreadRadius: 0.4,
-                                                    ),
-                                                  ],
-                                          ),
-                                          child: Stack(
-                                            children: [
-                                              Positioned.fill(
-                                                child: IgnorePointer(
-                                                  child: CustomPaint(
-                                                    painter: _WorldTilePainter(
-                                                      northRiver: northRiver,
-                                                      southRiver: southRiver,
-                                                      eastRiver: eastRiver,
-                                                      westRiver: westRiver,
-                                                      isBlocked: isBlocked,
-                                                      animValue:
-                                                          _riverAnimValue,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              if (territoryStatus?.frontline ??
-                                                  false)
-                                                Positioned(
-                                                  left: 3,
-                                                  top: 3,
-                                                  child: Container(
-                                                    width: 9,
-                                                    height: 9,
-                                                    decoration: BoxDecoration(
-                                                      color: const Color(
-                                                        0xFF7A1F14,
-                                                      ).withValues(alpha: 0.78),
-                                                      shape: BoxShape.circle,
-                                                      border: Border.all(
-                                                        color: const Color(
-                                                          0xFFFFE0AE,
-                                                        ),
-                                                        width: 0.8,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              if (onSelectedSupplyLine)
-                                                Positioned(
-                                                  left: 0,
-                                                  right: 0,
-                                                  top: 0,
-                                                  child: Center(
-                                                    child: Container(
-                                                      width: 16,
-                                                      height: 3,
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                          0xFFC89E3C,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              99,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              if (isLegalMove && stack == null)
-                                                Center(
-                                                  child: Container(
-                                                    width: 16,
-                                                    height: 16,
-                                                    decoration: BoxDecoration(
-                                                      color: const Color(
-                                                        0xFF2F5D4E,
-                                                      ).withValues(alpha: 0.5),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                  ),
-                                                ),
-                                              if (stack != null)
-                                                Center(
-                                                  child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(3),
-                                                    child: FittedBox(
-                                                      fit: BoxFit.scaleDown,
-                                                      child: _buildWorldStackTile(
-                                                        stack: stack,
-                                                        round: world.round,
-                                                        isActive:
-                                                            stack.ownerId ==
-                                                            world
-                                                                .activePlayerId,
-                                                        supplyReport:
-                                                            stackSupplyReport,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              if (stack == null &&
-                                                  (settlement != null ||
-                                                      camp != null))
-                                                Center(
-                                                  child:
-                                                      _buildWorldTileSiteSummary(
-                                                        world: world,
-                                                        settlement: settlement,
-                                                        camp: camp,
-                                                      ),
-                                                ),
-                                              if (foodTileOwner != null ||
-                                                  tilePillaged)
-                                                Positioned(
-                                                  left: 2,
-                                                  bottom: 2,
-                                                  child: _buildFoodTileMarker(
-                                                    ownerId: foodTileOwner,
-                                                    pillaged: tilePillaged,
-                                                  ),
-                                                ),
-                                              if (isLastEnemyFrom)
-                                                const Positioned(
-                                                  left: 2,
-                                                  bottom: 2,
-                                                  child: DecoratedBox(
-                                                    decoration: BoxDecoration(
-                                                      color: Color(0xFF8C6C1E),
-                                                      borderRadius:
-                                                          BorderRadius.all(
-                                                            Radius.circular(6),
-                                                          ),
-                                                    ),
-                                                    child: Padding(
-                                                      padding:
-                                                          EdgeInsets.symmetric(
-                                                            horizontal: 3,
-                                                            vertical: 1,
-                                                          ),
-                                                      child: Text(
-                                                        'FROM',
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 7,
-                                                          fontWeight:
-                                                              FontWeight.w800,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              if (isLastEnemyTo)
-                                                const Positioned(
-                                                  right: 2,
-                                                  bottom: 2,
-                                                  child: DecoratedBox(
-                                                    decoration: BoxDecoration(
-                                                      color: Color(0xFFA53224),
-                                                      borderRadius:
-                                                          BorderRadius.all(
-                                                            Radius.circular(6),
-                                                          ),
-                                                    ),
-                                                    child: Padding(
-                                                      padding:
-                                                          EdgeInsets.symmetric(
-                                                            horizontal: 3,
-                                                            vertical: 1,
-                                                          ),
-                                                      child: Text(
-                                                        'TO',
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 7,
-                                                          fontWeight:
-                                                              FontWeight.w800,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              if (settlement != null)
-                                                Positioned(
-                                                  top: 2,
-                                                  left: 2,
-                                                  child: _buildSettlementBadge(
-                                                    world,
-                                                    settlement,
-                                                  ),
-                                                ),
-                                              if (camp != null)
-                                                Positioned(
-                                                  top: 2,
-                                                  right: 2,
-                                                  child: _buildCampBadge(
-                                                    world,
-                                                    camp,
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                  ...tileWidgets,
                                 ],
                               ),
                             ),
@@ -8406,6 +8395,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
     final ownerColor = playerColor(stack.ownerId);
     final ownerText = _contrastColor(ownerColor);
     final comp = stack.army.composition;
+    final totalUnits = stack.army.units.length;
     final lineState = supplyReport?.stateLabel ?? 'No line';
     final lineColor = switch (supplyReport?.state ??
         _SupplyLineState.isolated) {
@@ -8432,7 +8422,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -8440,21 +8430,22 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 18,
-                  height: 18,
-                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: ownerColor,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(99),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.92),
                       width: 1,
                     ),
                   ),
                   child: Text(
-                    'P${stack.ownerId + 1}',
+                    'P${stack.ownerId + 1} ${stack.label}',
                     style: TextStyle(
-                      fontSize: 9.1,
+                      fontSize: 8.8,
                       height: 1,
                       fontWeight: FontWeight.w900,
                       color: ownerText,
@@ -8472,42 +8463,31 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 2),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _formationPip(
-                  label: 'P',
-                  count: comp.pawns,
-                  color: const Color(0xFF7A2A1A),
+            const SizedBox(height: 5),
+            SizedBox(
+              width: 64,
+              height: 18,
+              child: CustomPaint(
+                painter: _MarchColumnPainter(
+                  ownerColor: ownerColor,
+                  infantry: comp.pawns,
+                  cavalry: comp.knights,
+                  support: comp.rooks + comp.bishops,
+                  commanders: comp.generals,
                 ),
-                const SizedBox(width: 2),
-                _formationPip(
-                  label: 'R',
-                  count: comp.rooks,
-                  color: const Color(0xFF4D3825),
-                ),
-                const SizedBox(width: 2),
-                _formationPip(
-                  label: 'N',
-                  count: comp.knights,
-                  color: const Color(0xFF906B1E),
-                ),
-                const SizedBox(width: 2),
-                _formationPip(
-                  label: 'B',
-                  count: comp.bishops,
-                  color: const Color(0xFF355E63),
-                ),
-                const SizedBox(width: 2),
-                _formationPip(
-                  label: 'G',
-                  count: comp.generals,
-                  color: const Color(0xFF2D2D2D),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
+            Text(
+              '$totalUnits units',
+              style: const TextStyle(
+                fontSize: 8.7,
+                height: 1,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF473826),
+              ),
+            ),
+            const SizedBox(height: 3),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
@@ -8530,7 +8510,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
             ),
             if (stack.fatigue > 0 || stack.forcedMarchRound == round)
               Padding(
-                padding: const EdgeInsets.only(top: 1),
+                padding: const EdgeInsets.only(top: 3),
                 child: Wrap(
                   spacing: 2,
                   children: [
@@ -8553,31 +8533,6 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                 ),
               ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _formationPip({
-    required String label,
-    required int count,
-    required Color color,
-  }) {
-    return Container(
-      width: 16,
-      height: 16,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: count > 0 ? 0.9 : 0.18),
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Text(
-        count > 0 ? '$label$count' : label,
-        style: TextStyle(
-          fontSize: count > 0 ? 7.2 : 7.8,
-          height: 1,
-          fontWeight: FontWeight.w900,
-          color: count > 0 ? Colors.white : const Color(0xFF6A5B45),
         ),
       ),
     );
@@ -8668,14 +8623,12 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
       'Turn: ${activePlayer.name} (P${activePlayer.id + 1})',
       'CP ${_commandPointsForPlayer(world, world.activePlayerId)} • Food ${_foodForPlayer(world, world.activePlayerId)}',
       'Settlements ${world.settlements.length} • Camps $campCount • Outposts $outpostCount',
-      'Turn marker: active-player armies glow and show lightning icon.',
-      'Blue borders are rivers between tiles. Only fords and bridges cross them.',
-      'Territory wash shows who can realistically feed this ground. Red dots mark front lines.',
-      'Gold bars trace the selected army supply line back to its nearest friendly magazine.',
+      'Hexes are operational sectors. Bright columns are armies ready to march.',
+      'Blue bands mark rivers on hex edges. Only fords and bridges cross them safely.',
+      'Red dots mark hot front lines. Gold lines trace the selected supply route.',
+      'The curved arrow highlights the latest enemy movement across the theatre.',
       'Armies need water sooner than food. Riverbank camps are strong staging positions.',
       'Field markers: grass = secured food tile, flame = pillaged tile.',
-      'Codes: P pawn, R rook, N knight, B bishop, G general',
-      'General traits: FLD field, VET veteran, DRM drummer, FRG fragile',
       if (lastEnemyMove != null)
         'Last enemy move: P${lastEnemyMove.playerId + 1} ${lastEnemyMove.stackId} '
             '(${lastEnemyMove.from.row},${lastEnemyMove.from.col}) -> '
@@ -9227,12 +9180,58 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          _buildStackActionGuide(selectedCamp: selectedCamp),
           if (!canUseSettlementActions && selectedSettlement != null) ...[
             const SizedBox(height: 6),
             const Text(
               'Settlement actions require your selected army to stand on this owned settlement.',
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStackActionGuide({required CampState? selectedCamp}) {
+    final campLine = selectedCamp == null
+        ? 'Camp: spend CP and food to create temporary support on this army tile.'
+        : 'Posture: cycle camp role. Outpost: make an older camp last. Break: remove this camp.';
+    const lines = <String>[
+      'Move: tap a highlighted tile. Moving into an enemy army starts battle setup.',
+      'Forced: toggle 2-tile march for food; useful for tempo, risky for fatigue.',
+      'Join Columns: merge an adjacent allied army into this host if the stack cap allows it.',
+      'Secure: claim open fields for steadier food. Pillage: burn enemy or unsecured fields for immediate supply.',
+      'Settlement: open local town actions. Details: inspect supply, water, command, and battle context.',
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7EEDB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0x338A6A3E)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Order Key',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          for (final line in <String>[...lines, campLine])
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                line,
+                style: const TextStyle(
+                  fontSize: 11.6,
+                  color: Color(0xFF604B2A),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -9511,9 +9510,11 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
 
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
       builder: (context) {
         return SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -9531,6 +9532,19 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                   const Text(
                     'Requires your selected army on this owned settlement.',
                   ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Tax: gain coin, unrest +1. Forage: gain food and local supply, unrest +1.',
+                ),
+                const Text(
+                  'Garrison: add defense, lower unrest, and arm ditches where available.',
+                ),
+                const Text(
+                  'Levy: add infantry if cooldown, manpower, and stack cap allow it.',
+                ),
+                const Text(
+                  'Study: spend extra CP and food to improve a general when culture allows it.',
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -9968,7 +9982,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                         ? () => _advanceFrontline()
                         : null,
                     icon: const Icon(Icons.trending_up_rounded),
-                    label: const Text('Contact Advance'),
+                    label: const Text('Advance'),
                   ),
                   FilledButton.icon(
                     onPressed: battle.canUseGeneralAdvanceSkill()
@@ -10030,17 +10044,36 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Text(
-              'How Battle Works:\n'
-              '- Pawns move forward 1; from the opening row they may move 2 if clear.\n'
-              '- If the file ahead is blocked, a pawn can sidestep one square.\n'
-              '- Generals move one square in any direction.\n'
-              '- Contact Advance triggers direct front-line clashes.\n'
-              '- Low morale can force retreat, desertion, or a late rally.\n'
-              '- Fragile generals may cause panic retreat if threatened.\n'
-              '- Veteran/War Drummer generals unlock stronger command surges.\n'
-              '- You lose if all generals fall or morale fully collapses.',
-              style: theme.textTheme.bodyMedium,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Battle Action Guide', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 6),
+                Text(
+                  'Move: select a unit, then tap a highlighted square. Captures damage morale.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                Text(
+                  'Charge: one-time aggressive stance if you have enough mobile units.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                Text(
+                  'Defend: one-time holding stance if enough units remain.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                Text(
+                  'Advance: pushes front pawns into contact; it can move, capture, clash, or get repulsed.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                Text(
+                  'High Command: stronger one-time advance from a capable general.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                Text(
+                  'Watch morale and commanders. Broken morale or lost commanders can end the battle before every unit is gone.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
             ),
           ),
         ),
@@ -10415,7 +10448,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                 onPressed: battle.canDefend() ? _useDefend : null,
                 style: buttonStyle,
                 icon: const Icon(Icons.shield_rounded),
-                label: const Text('Hold'),
+                label: const Text('Defend'),
               ),
             ),
             SizedBox(
@@ -10437,7 +10470,7 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                     : null,
                 style: buttonStyle,
                 icon: const Icon(Icons.bolt_rounded),
-                label: const Text('High Cmd'),
+                label: const Text('Command'),
               ),
             ),
           ],
@@ -10492,6 +10525,28 @@ class _AlphaGameScreenState extends State<AlphaGameScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Action Key', style: theme.textTheme.titleSmall),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Move pieces by selecting a unit and tapping a highlighted square.',
+                          ),
+                          const Text(
+                            'Charge and Defend are one-time stances. Advance pushes the pawn line. Command is the general-led version.',
+                          ),
+                          const Text(
+                            'Captures, lost commanders, and bad contact shift morale toward retreat or collapse.',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   _commandCard(session),
                   const SizedBox(height: 8),
                   _decisiveSignalsCard(session),
@@ -11645,7 +11700,11 @@ class _WorldTilePainter extends CustomPainter {
     required this.southRiver,
     required this.eastRiver,
     required this.westRiver,
+    required this.fillColor,
+    required this.borderColor,
+    required this.borderWidth,
     required this.isBlocked,
+    required this.glowColor,
     required this.animValue,
   });
 
@@ -11653,24 +11712,52 @@ class _WorldTilePainter extends CustomPainter {
   final RiverEdgeType? southRiver;
   final RiverEdgeType? eastRiver;
   final RiverEdgeType? westRiver;
+  final Color fillColor;
+  final Color borderColor;
+  final double borderWidth;
   final bool isBlocked;
+  final Color? glowColor;
   final double animValue;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (isBlocked) {
-      return;
+    final rect = Offset.zero & size;
+    final path = _WorldHexMetrics.hexPathForRect(rect.deflate(1.2));
+
+    if (glowColor != null) {
+      canvas.drawShadow(path, glowColor!.withValues(alpha: 0.58), 7, false);
     }
 
-    final washPaint = Paint()
-      ..color = const Color(0x14FFF8E5)
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color.alphaBlend(const Color(0x18FFFFFF), fillColor),
+          fillColor,
+          Color.alphaBlend(const Color(0x22000000), fillColor),
+        ],
+      ).createShader(rect)
       ..style = PaintingStyle.fill;
-    canvas.drawRect(Offset.zero & size, washPaint);
+    canvas.drawPath(path, fillPaint);
 
-    _paintEdge(canvas, size, northRiver, _TileEdge.north);
-    _paintEdge(canvas, size, southRiver, _TileEdge.south);
-    _paintEdge(canvas, size, eastRiver, _TileEdge.east);
-    _paintEdge(canvas, size, westRiver, _TileEdge.west);
+    if (!isBlocked) {
+      final washPaint = Paint()
+        ..color = const Color(0x14FFF8E5)
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(path, washPaint);
+
+      _paintEdge(canvas, size, northRiver, _TileEdge.north);
+      _paintEdge(canvas, size, southRiver, _TileEdge.south);
+      _paintEdge(canvas, size, eastRiver, _TileEdge.east);
+      _paintEdge(canvas, size, westRiver, _TileEdge.west);
+    }
+
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth;
+    canvas.drawPath(path, borderPaint);
   }
 
   void _paintEdge(
@@ -11683,22 +11770,16 @@ class _WorldTilePainter extends CustomPainter {
       return;
     }
 
+    final corners = _WorldHexMetrics.cornersForRect(Offset.zero & size);
     final isHorizontal = edge == _TileEdge.north || edge == _TileEdge.south;
     final stroke = math.max(6.0, size.shortestSide * 0.22);
     final bankStroke = stroke * 1.3;
-    final padding = stroke * 0.3;
 
     final (start, end) = switch (edge) {
-      _TileEdge.north => (Offset(0, padding), Offset(size.width, padding)),
-      _TileEdge.south => (
-        Offset(0, size.height - padding),
-        Offset(size.width, size.height - padding),
-      ),
-      _TileEdge.east => (
-        Offset(size.width - padding, 0),
-        Offset(size.width - padding, size.height),
-      ),
-      _TileEdge.west => (Offset(padding, 0), Offset(padding, size.height)),
+      _TileEdge.north => (corners[5], corners[1]),
+      _TileEdge.south => (corners[4], corners[2]),
+      _TileEdge.east => (corners[1], corners[2]),
+      _TileEdge.west => (corners[5], corners[4]),
     };
 
     // Draw Bank (Mud/Grass edge)
@@ -11855,7 +11936,11 @@ class _WorldTilePainter extends CustomPainter {
         southRiver != oldDelegate.southRiver ||
         eastRiver != oldDelegate.eastRiver ||
         westRiver != oldDelegate.westRiver ||
+        fillColor != oldDelegate.fillColor ||
+        borderColor != oldDelegate.borderColor ||
+        borderWidth != oldDelegate.borderWidth ||
         isBlocked != oldDelegate.isBlocked ||
+        glowColor != oldDelegate.glowColor ||
         animValue != oldDelegate.animValue;
   }
 }
@@ -11869,6 +11954,8 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
     required this.selectedSupplyLine,
     required this.highlightedOwnerId,
     required this.highlightedProvinceId,
+    required this.highlightedMove,
+    required this.hexMetrics,
     required this.reduceEffects,
   });
 
@@ -11879,6 +11966,8 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
   final List<BoardPosition> selectedSupplyLine;
   final int? highlightedOwnerId;
   final String? highlightedProvinceId;
+  final _WorldMoveMarker? highlightedMove;
+  final _WorldHexMetrics hexMetrics;
   final bool reduceEffects;
 
   @override
@@ -11886,9 +11975,6 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
     if (world.size <= 0) {
       return;
     }
-
-    final cellWidth = size.width / world.size;
-    final cellHeight = size.height / world.size;
 
     final parchmentBands = Paint()
       ..shader = const LinearGradient(
@@ -11903,162 +11989,47 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
       ..color = const Color(0xFF7D6A4C).withValues(alpha: 0.08)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
-    for (var row = 0; row < world.size; row++) {
-      final y = (row + 0.5) * cellHeight;
+    for (var row = 0; row < world.size + 1; row++) {
+      final y = ((row + 0.4) / (world.size + 1)) * size.height;
       final path = Path()
         ..moveTo(0, y)
         ..quadraticBezierTo(
           size.width * 0.33,
-          y + ((row.isEven ? 1 : -1) * cellHeight * 0.12),
+          y + ((row.isEven ? 1 : -1) * size.height * 0.035),
           size.width,
           y,
         );
       canvas.drawPath(path, contourPaint);
     }
 
-    for (final entry in territoryByPosition.entries) {
-      final ownerId = entry.value.ownerId;
-      if (ownerId == null) {
-        continue;
-      }
-      final position = entry.key;
-      final left = position.col * cellWidth;
-      final top = position.row * cellHeight;
-      final rect = Rect.fromLTWH(
-        left + 2,
-        top + 2,
-        cellWidth - 4,
-        cellHeight - 4,
-      );
-      final fill = Paint()
-        ..color = playerColor(ownerId).withValues(
-          alpha: entry.value.contested
-              ? 0.1
-              : (entry.value.depth <= 2 ? 0.2 : 0.12),
-        )
-        ..style = PaintingStyle.fill;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(8)),
-        fill,
-      );
-
-      if (entry.value.frontline) {
-        final dashPaint = Paint()
-          ..color = const Color(0xFF73411E).withValues(alpha: 0.42)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.3
-          ..strokeCap = StrokeCap.round;
-        final midY = rect.center.dy;
-        for (var i = 0; i < 3; i++) {
-          final startX = rect.left + 5 + (i * ((rect.width - 10) / 3));
-          canvas.drawLine(
-            Offset(startX, midY - 4),
-            Offset(startX + 6, midY + 4),
-            dashPaint,
-          );
-        }
-      }
-    }
-
+    final provinceGlowPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xFFC49434).withValues(alpha: 0.12);
     final provinceBorderPaint = Paint()
-      ..color = const Color(0xFF5E4121).withValues(alpha: 0.54)
+      ..color = const Color(0xFF5E4121).withValues(alpha: 0.24)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.1
-      ..strokeCap = StrokeCap.round;
-    final highlightedProvincePaint = Paint()
+      ..strokeWidth = 1.6;
+    final provinceHighlightPaint = Paint()
       ..color = const Color(0xFFC49434).withValues(alpha: 0.72)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.1
-      ..strokeCap = StrokeCap.round;
-    for (var row = 0; row < world.size; row++) {
-      for (var col = 0; col < world.size; col++) {
-        final position = BoardPosition(row, col);
-        final province = provinceByPosition[position];
-        if (province == null) {
-          continue;
-        }
-        final left = col * cellWidth;
-        final top = row * cellHeight;
-        final right = left + cellWidth;
-        final bottom = top + cellHeight;
+      ..strokeWidth = 2.2;
 
-        void drawProvinceEdge(
-          BoardPosition neighbor,
-          Offset start,
-          Offset end,
-        ) {
-          final neighborProvince = provinceByPosition[neighbor];
-          final boundaryPaint = province.id == highlightedProvinceId
-              ? highlightedProvincePaint
-              : provinceBorderPaint;
-          if (neighborProvince == null || neighborProvince.id != province.id) {
-            canvas.drawLine(start, end, boundaryPaint);
-          }
+    for (final province in provinces) {
+      if (province.tiles.isEmpty) {
+        continue;
+      }
+      final isHighlighted = province.id == highlightedProvinceId;
+      for (final tile in province.tiles) {
+        final path = _WorldHexMetrics.hexPathForRect(
+          hexMetrics.tileRect(tile).deflate(3),
+        );
+        if (isHighlighted) {
+          canvas.drawPath(path, provinceGlowPaint);
         }
-
-        if (row == 0) {
-          canvas.drawLine(
-            Offset(left, top),
-            Offset(right, top),
-            province.id == highlightedProvinceId
-                ? highlightedProvincePaint
-                : provinceBorderPaint,
-          );
-        } else {
-          drawProvinceEdge(
-            BoardPosition(row - 1, col),
-            Offset(left, top),
-            Offset(right, top),
-          );
-        }
-
-        if (col == 0) {
-          canvas.drawLine(
-            Offset(left, top),
-            Offset(left, bottom),
-            province.id == highlightedProvinceId
-                ? highlightedProvincePaint
-                : provinceBorderPaint,
-          );
-        } else {
-          drawProvinceEdge(
-            BoardPosition(row, col - 1),
-            Offset(left, top),
-            Offset(left, bottom),
-          );
-        }
-
-        if (row == world.size - 1) {
-          canvas.drawLine(
-            Offset(left, bottom),
-            Offset(right, bottom),
-            province.id == highlightedProvinceId
-                ? highlightedProvincePaint
-                : provinceBorderPaint,
-          );
-        } else {
-          drawProvinceEdge(
-            BoardPosition(row + 1, col),
-            Offset(left, bottom),
-            Offset(right, bottom),
-          );
-        }
-
-        if (col == world.size - 1) {
-          canvas.drawLine(
-            Offset(right, top),
-            Offset(right, bottom),
-            province.id == highlightedProvinceId
-                ? highlightedProvincePaint
-                : provinceBorderPaint,
-          );
-        } else {
-          drawProvinceEdge(
-            BoardPosition(row, col + 1),
-            Offset(right, top),
-            Offset(right, bottom),
-          );
-        }
+        canvas.drawPath(
+          path,
+          isHighlighted ? provinceHighlightPaint : provinceBorderPaint,
+        );
       }
     }
 
@@ -12066,9 +12037,14 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
       if (province.tiles.isEmpty) {
         continue;
       }
+      final centers = province.tiles
+          .map(hexMetrics.centerFor)
+          .toList(growable: false);
       final anchor = Offset(
-        province.gridAnchor.dx * cellWidth,
-        province.gridAnchor.dy * cellHeight,
+        centers.fold<double>(0, (sum, point) => sum + point.dx) /
+            centers.length,
+        centers.fold<double>(0, (sum, point) => sum + point.dy) /
+            centers.length,
       );
       final labelColor = province.frontline || province.contested
           ? const Color(0xFF6E2318)
@@ -12080,13 +12056,13 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
             color: labelColor.withValues(
               alpha: province.id == highlightedProvinceId ? 0.9 : 0.68,
             ),
-            fontSize: math.max(9, cellHeight * 0.2),
+            fontSize: math.max(9, hexMetrics.radius * 0.34),
             fontWeight: FontWeight.w800,
             letterSpacing: 0.7,
           ),
         ),
         textDirection: TextDirection.ltr,
-      )..layout(maxWidth: cellWidth * 2.4);
+      )..layout(maxWidth: hexMetrics.tileWidth * 1.8);
       textPainter.paint(
         canvas,
         Offset(
@@ -12098,12 +12074,7 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
 
     if (selectedSupplyLine.length >= 2) {
       final routePoints = selectedSupplyLine
-          .map(
-            (position) => Offset(
-              (position.col + 0.5) * cellWidth,
-              (position.row + 0.5) * cellHeight,
-            ),
-          )
+          .map(hexMetrics.centerFor)
           .toList(growable: false);
       final routePath = Path()
         ..moveTo(routePoints.first.dx, routePoints.first.dy);
@@ -12151,6 +12122,50 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
       );
     }
 
+    if (highlightedMove != null) {
+      final start = hexMetrics.centerFor(highlightedMove!.from);
+      final end = hexMetrics.centerFor(highlightedMove!.to);
+      final control = Offset(
+        (start.dx + end.dx) / 2,
+        math.min(start.dy, end.dy) - (hexMetrics.radius * 0.7),
+      );
+      final movePath = Path()
+        ..moveTo(start.dx, start.dy)
+        ..quadraticBezierTo(control.dx, control.dy, end.dx, end.dy);
+      if (!reduceEffects) {
+        final shadowPaint = Paint()
+          ..color = const Color(0xFF2C1A10).withValues(alpha: 0.12)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 9
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+        canvas.drawPath(movePath, shadowPaint);
+      }
+      final movePaint = Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF8C6C1E), Color(0xFFA53224)],
+        ).createShader(Rect.fromPoints(start, end))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0
+        ..strokeCap = StrokeCap.round;
+      canvas.drawPath(movePath, movePaint);
+      final arrowPaint = Paint()
+        ..color = const Color(0xFFA53224)
+        ..style = PaintingStyle.fill;
+      final angle = math.atan2(end.dy - control.dy, end.dx - control.dx);
+      final arrow = Path()
+        ..moveTo(end.dx, end.dy)
+        ..lineTo(
+          end.dx - 11 * math.cos(angle - 0.35),
+          end.dy - 11 * math.sin(angle - 0.35),
+        )
+        ..lineTo(
+          end.dx - 11 * math.cos(angle + 0.35),
+          end.dy - 11 * math.sin(angle + 0.35),
+        )
+        ..close();
+      canvas.drawPath(arrow, arrowPaint);
+    }
+
     if (highlightedOwnerId != null) {
       final crestPaint = Paint()
         ..color = playerColor(highlightedOwnerId!).withValues(alpha: 0.08)
@@ -12170,6 +12185,8 @@ class _WorldCampaignOverlayPainter extends CustomPainter {
     return oldDelegate.world != world ||
         oldDelegate.highlightedOwnerId != highlightedOwnerId ||
         oldDelegate.highlightedProvinceId != highlightedProvinceId ||
+        oldDelegate.highlightedMove != highlightedMove ||
+        oldDelegate.hexMetrics != hexMetrics ||
         oldDelegate.reduceEffects != reduceEffects ||
         oldDelegate.provinces.length != provinces.length ||
         oldDelegate.provinceByPosition.length != provinceByPosition.length ||

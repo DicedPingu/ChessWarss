@@ -4,293 +4,109 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../application/save/save_repository.dart';
 import 'alpha_game_screen.dart';
 import 'game_mode.dart';
-import 'world_map_lab_screen.dart';
+import 'map_test_menu_screen.dart';
 
 class GameModeMenuScreen extends StatelessWidget {
   const GameModeMenuScreen({super.key, required this.saveRepository});
 
   final SaveRepository saveRepository;
 
-  Future<void> _loadCampaignFromSlots(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    List<SaveSlotSummary> slots;
-    try {
-      slots = await saveRepository.listSlots();
-    } catch (_) {
-      if (!context.mounted) {
-        return;
-      }
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Could not read local save slots.')),
-      );
-      return;
-    }
-    if (!context.mounted) {
-      return;
-    }
-    if (slots.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('No local campaign saves found yet.')),
-      );
-      return;
-    }
-
-    final selected = await showDialog<SaveSlotSummary>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Load Campaign'),
-          content: SizedBox(
-            width: 520,
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: slots.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 6),
-              itemBuilder: (itemContext, index) {
-                final slot = slots[index];
-                final mode = gameModeFromStorageKey(slot.gameModeKey);
-                final phaseLabel = slot.phase.name.toUpperCase();
-                final roundLine = slot.round == null
-                    ? ''
-                    : ' • Round ${slot.round}';
-                return ListTile(
-                  tileColor: Colors.white.withValues(alpha: 0.78),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  title: Text(
-                    '${slot.isAutosave ? 'Autosave' : slot.slotId} • ${mode.label}',
-                  ),
-                  subtitle: Text(
-                    '$phaseLabel$roundLine • ${slot.savedAtUtc.toLocal()}',
-                  ),
-                  trailing: const Icon(Icons.play_arrow_rounded),
-                  onTap: () => Navigator.of(dialogContext).pop(slot),
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (!context.mounted || selected == null) {
-      return;
-    }
-    final mode = gameModeFromStorageKey(selected.gameModeKey);
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => AlphaGameScreen(
-          gameMode: mode,
-          saveRepository: saveRepository,
-          initialLoadSlotId: selected.slotId,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ChessWarss'),
-        actions: [
-          Tooltip(
-            message: 'Load a previously saved campaign',
-            child: TextButton.icon(
-              onPressed: () => _loadCampaignFromSlots(context),
-              icon: const Icon(Icons.folder_open_rounded),
-              label: const Text('Load Campaign'),
-            ),
-          ),
-        ],
-      ),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFF4E6C4), Color(0xFFE0C089), Color(0xFFC6945B)],
+            colors: [Color(0xFF2C3E50), Color(0xFF000000), Color(0xFF4CA1AF)],
           ),
         ),
         child: SafeArea(
           child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1060),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final compact = constraints.maxHeight < 760;
-                    final useRow = constraints.maxWidth >= 920 && !compact;
-                    final hero = Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8EED7).withValues(alpha: 0.92),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: const Color(0xFF8A6336).withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Choose Campaign',
-                            style: theme.textTheme.headlineMedium,
-                          ).animate().fadeIn(duration: 360.ms),
-                          const SizedBox(height: 8),
-                          Text(
-                            'The first track is single-player conquest. Casus Belli is the local multiplayer proving ground. Both now lean harder into crossings, supply lines, raiding, and treasure brought back to strengthen the realm.',
-                            style: theme.textTheme.bodyLarge,
-                          ).animate().fadeIn(delay: 80.ms, duration: 360.ms),
-                          const SizedBox(height: 14),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: const [
-                              Chip(
-                                avatar: Icon(
-                                  Icons.account_balance_rounded,
-                                  size: 18,
-                                ),
-                                label: Text('Single-Player First'),
-                              ),
-                              Chip(
-                                avatar: Icon(Icons.groups_rounded, size: 18),
-                                label: Text('Local Multiplayer'),
-                              ),
-                              Chip(
-                                avatar: Icon(Icons.map_rounded, size: 18),
-                                label: Text('Hex / Nodes / Provinces'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          FilledButton.tonalIcon(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const WorldMapLabScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.grid_goldenratio_rounded),
-                            label: const Text('World Map Lab'),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'CHESSWARSS',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.displayMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 8,
+                        shadows: [
+                          const Shadow(
+                            color: Colors.black54,
+                            blurRadius: 15,
+                            offset: Offset(0, 4),
                           ),
                         ],
                       ),
-                    );
+                    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2),
 
-                    if (!useRow) {
-                      return SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            hero,
-                            const SizedBox(height: 14),
-                            _GameModeCard(
-                                  mode: GameMode.eterna,
-                                  saveRepository: saveRepository,
-                                )
-                                .animate()
-                                .fadeIn(delay: 180.ms, duration: 380.ms)
-                                .slideY(begin: 0.06),
-                            const SizedBox(height: 12),
-                            _GameModeCard(
-                                  mode: GameMode.casusBelli,
-                                  saveRepository: saveRepository,
-                                )
-                                .animate()
-                                .fadeIn(delay: 260.ms, duration: 380.ms)
-                                .slideY(begin: 0.06),
-                          ],
-                        ),
-                      );
-                    }
+                    const SizedBox(height: 12),
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        hero,
-                        const SizedBox(height: 14),
-                        Expanded(
-                          child: useRow
-                              ? Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    Expanded(
-                                      child:
-                                          _GameModeCard(
-                                                mode: GameMode.eterna,
-                                                saveRepository: saveRepository,
-                                              )
-                                              .animate()
-                                              .fadeIn(
-                                                delay: 180.ms,
-                                                duration: 380.ms,
-                                              )
-                                              .slideX(begin: -0.06),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child:
-                                          _GameModeCard(
-                                                mode: GameMode.casusBelli,
-                                                saveRepository: saveRepository,
-                                              )
-                                              .animate()
-                                              .fadeIn(
-                                                delay: 260.ms,
-                                                duration: 380.ms,
-                                              )
-                                              .slideX(begin: 0.06),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  children: [
-                                    Expanded(
-                                      child:
-                                          _GameModeCard(
-                                                mode: GameMode.eterna,
-                                                saveRepository: saveRepository,
-                                              )
-                                              .animate()
-                                              .fadeIn(
-                                                delay: 180.ms,
-                                                duration: 380.ms,
-                                              )
-                                              .slideY(begin: 0.06),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Expanded(
-                                      child:
-                                          _GameModeCard(
-                                                mode: GameMode.casusBelli,
-                                                saveRepository: saveRepository,
-                                              )
-                                              .animate()
-                                              .fadeIn(
-                                                delay: 260.ms,
-                                                duration: 380.ms,
-                                              )
-                                              .slideY(begin: 0.06),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ],
-                    );
-                  },
+                    Text(
+                      'Select Your Campaign',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white70,
+                        letterSpacing: 2,
+                      ),
+                    ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
+
+                    const SizedBox(height: 60),
+
+                    _PremiumModeButton(
+                      title: 'ETERNA',
+                      translation: 'Eternal',
+                      subtitle: 'Single Player Conquest',
+                      description:
+                          'A solo path with quick strategic turns and decisive chess-board battles.',
+                      icon: Icons.auto_stories_rounded,
+                      gradient: const [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
+                      onTap: () => _launchMode(context, GameMode.eterna),
+                    ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
+
+                    const SizedBox(height: 24),
+
+                    _PremiumModeButton(
+                      title: 'CASUS BELLI',
+                      translation: 'Cause for War',
+                      subtitle: 'Local Multiplayer',
+                      description:
+                          'A hotseat-first clash built around fast map pressure and repeatable fights.',
+                      icon: Icons.sports_martial_arts_rounded,
+                      gradient: const [Color(0xFF11998E), Color(0xFF38EF7D)],
+                      onTap: () => _launchMode(context, GameMode.casusBelli),
+                    ).animate().fadeIn(delay: 500.ms).slideX(begin: 0.1),
+
+                    const SizedBox(height: 24),
+
+                    _PremiumModeButton(
+                      title: 'TABULAE PROBATIONIS',
+                      translation: 'Test Tables',
+                      subtitle: 'Experimental Grounds',
+                      description:
+                          'Test out highly realistic logistics, siege mechanics, and new board prototypes.',
+                      icon: Icons.science_rounded,
+                      gradient: const [Color(0xFFF2994A), Color(0xFFF2C94C)],
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const MapTestMenuScreen(),
+                          ),
+                        );
+                      },
+                    ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.1),
+                  ],
                 ),
               ),
             ),
@@ -299,127 +115,144 @@ class GameModeMenuScreen extends StatelessWidget {
       ),
     );
   }
+
+  void _launchMode(BuildContext context, GameMode mode) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            AlphaGameScreen(gameMode: mode, saveRepository: saveRepository),
+      ),
+    );
+  }
 }
 
-class _GameModeCard extends StatelessWidget {
-  const _GameModeCard({required this.mode, required this.saveRepository});
+class _PremiumModeButton extends StatefulWidget {
+  const _PremiumModeButton({
+    required this.title,
+    required this.translation,
+    required this.subtitle,
+    required this.description,
+    required this.icon,
+    required this.gradient,
+    required this.onTap,
+  });
 
-  final GameMode mode;
-  final SaveRepository saveRepository;
+  final String title;
+  final String translation;
+  final String subtitle;
+  final String description;
+  final IconData icon;
+  final List<Color> gradient;
+  final VoidCallback onTap;
+
+  @override
+  State<_PremiumModeButton> createState() => _PremiumModeButtonState();
+}
+
+class _PremiumModeButtonState extends State<_PremiumModeButton> {
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isSolo = mode == GameMode.eterna;
-    final accent = isSolo ? const Color(0xFF8A2E22) : const Color(0xFF2F5B52);
-    final panel = isSolo
-        ? const [Color(0xFFF5E6D6), Color(0xFFE9C89A)]
-        : const [Color(0xFFE4EEE8), Color(0xFFC7D9CE)];
-
-    return Card(
-      color: Colors.white.withValues(alpha: 0.92),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: panel),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: accent.withValues(alpha: 0.22)),
+    final scale = _isHovered ? 1.02 : 1.0;
+    return Tooltip(
+      message: '${widget.title} means "${widget.translation}".',
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            transform: Matrix4.diagonal3Values(scale, scale, 1),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.gradient.last.withValues(
+                    alpha: _isHovered ? 0.6 : 0.3,
+                  ),
+                  blurRadius: _isHovered ? 25 : 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: widget.gradient,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(28.0),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          mode.label,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            color: accent,
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(widget.icon, size: 48, color: Colors.white),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
                           ),
                         ),
-                      ),
-                      Chip(
-                        label: Text(
-                          isSolo ? 'Single Player' : 'Local Multiplayer',
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.translation,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.96),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                        avatar: Icon(
-                          isSolo
-                              ? Icons.account_balance_rounded
-                              : Icons.groups_rounded,
-                          size: 18,
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.subtitle.toUpperCase(),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 2,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+                        Text(
+                          widget.description,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 15,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    isSolo
-                        ? 'Build a war machine, cross rivers, seize rich settlements, and return spoils to your heartland before your rivals can choke the campaign.'
-                        : 'Settle grudges on the same machine with compact campaigns tuned for repeated redeploys, local rivalry, and quick map comparisons.',
+                  const SizedBox(width: 16),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: Colors.white.withValues(
+                      alpha: _isHovered ? 1.0 : 0.5,
+                    ),
+                    size: 28,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            Text(mode.menuSummary),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                Chip(
-                  label: Text(
-                    'Map ${mode.minMapSize}x${mode.minMapSize}-${mode.maxMapSize}x${mode.maxMapSize}',
-                  ),
-                ),
-                Chip(
-                  label: Text(
-                    'Players ${mode.minPlayerCount}-${mode.maxPlayerCount}',
-                  ),
-                ),
-                Chip(
-                  label: Text(
-                    mode.playerControlEditable
-                        ? 'Hotseat-ready'
-                        : 'Campaign AI',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              isSolo
-                  ? 'Best if you want Caesar-in-Gaul pressure: frontier expansion, supply discipline, and long-form conquest.'
-                  : 'Best if you want to test theaters, openings, and line behavior quickly with another person in the room.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF5E503E),
-              ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => AlphaGameScreen(
-                      gameMode: mode,
-                      saveRepository: saveRepository,
-                    ),
-                  ),
-                );
-              },
-              icon: Icon(
-                isSolo
-                    ? Icons.auto_stories_rounded
-                    : Icons.sports_martial_arts_rounded,
-              ),
-              label: Text('Enter ${mode.label}'),
-            ),
-          ],
+          ),
         ),
       ),
     );
