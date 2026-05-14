@@ -79,6 +79,9 @@ void main() {
     expect(find.text('Supply Spine'), findsOneWidget);
     expect(find.text('Siege Ring'), findsOneWidget);
     expect(find.text('Three Approaches'), findsOneWidget);
+    expect(find.text('Command Piece'), findsOneWidget);
+    expect(find.text('General + Cohort'), findsOneWidget);
+    expect(find.text('March Column'), findsOneWidget);
     expect(find.text('Logistics & Siege'), findsNothing);
     expect(find.text('Square Warboard'), findsNothing);
     expect(find.text('Province Web'), findsNothing);
@@ -200,6 +203,29 @@ void main() {
     expect(find.textContaining('encircle'), findsWidgets);
     expect(find.byIcon(Icons.fort_rounded), findsWidgets);
     expect(find.textContaining('Tap active army'), findsOneWidget);
+    expect(find.text('Move Here'), findsNothing);
+  });
+
+  testWidgets('general cohort test stacks every chess piece on one hex', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await _pumpApp(tester);
+
+    await _enterProvingTables(tester);
+
+    await tester.tap(find.text('General + Cohort').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('war-table-open-test')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('General + Cohort Test'), findsOneWidget);
+    expect(find.textContaining('Livia Varro'), findsOneWidget);
+    expect(find.textContaining('full chess army'), findsOneWidget);
+    for (final piece in ['K', 'Q', 'R', 'B', 'N', 'P']) {
+      expect(find.byKey(ValueKey('stack-piece-rome-$piece')), findsOneWidget);
+    }
     expect(find.text('Move Here'), findsNothing);
   });
 }

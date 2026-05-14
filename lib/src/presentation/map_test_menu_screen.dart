@@ -50,12 +50,12 @@ class _MapTestMenuScreenState extends State<MapTestMenuScreen> {
                   const _WarTableHeader(),
                   const SizedBox(height: 10),
                   Expanded(
-                    flex: isWide ? 6 : 6,
+                    flex: isWide ? 5 : 5,
                     child: _FeaturedTrialPanel(entry: selected),
                   ),
                   const SizedBox(height: 12),
                   Expanded(
-                    flex: isWide ? 3 : 5,
+                    flex: isWide ? 4 : 6,
                     child: _FixedTestGrid(
                       entries: _entries,
                       selectedIndex: _selectedIndex,
@@ -418,70 +418,98 @@ class _TestCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: entry.subtitle,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Ink(
-            decoration: BoxDecoration(
-              color: selected
-                  ? _softColorFor(entry.title)
-                  : Color.lerp(_softColorFor(entry.title), Colors.white, 0.62),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxHeight < 46;
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: selected
-                    ? const Color(0xFF3D1D13)
-                    : const Color(0xFF8D6B48),
-                width: selected ? 3 : 2,
-              ),
-              boxShadow: selected
-                  ? const [
-                      BoxShadow(
-                        color: Color(0x333D1D13),
-                        blurRadius: 0,
-                        offset: Offset(3, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: _iconColorFor(entry.title),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFF3D1D13),
-                        width: 2,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(5),
-                      child: Icon(entry.icon, color: Colors.white, size: 18),
-                    ),
+              child: Ink(
+                decoration: BoxDecoration(
+                  color: selected
+                      ? _softColorFor(entry.title)
+                      : Color.lerp(
+                          _softColorFor(entry.title),
+                          Colors.white,
+                          0.62,
+                        ),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: selected
+                        ? const Color(0xFF3D1D13)
+                        : const Color(0xFF8D6B48),
+                    width: selected ? 3 : 2,
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    entry.cardTitle,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF3D1D13),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 10.5,
-                      height: 1,
-                    ),
-                  ),
-                ],
+                  boxShadow: selected
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x333D1D13),
+                            blurRadius: 0,
+                            offset: Offset(3, 4),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(compact ? 3 : 4),
+                  child: compact
+                      ? Center(
+                          child: Text(
+                            entry.cardTitle,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF3D1D13),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 10,
+                              height: 1,
+                            ),
+                          ),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: _iconColorFor(entry.title),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: const Color(0xFF3D1D13),
+                                  width: 2,
+                                ),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(5),
+                                child: Icon(
+                                  entry.icon,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              entry.cardTitle,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF3D1D13),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 10.5,
+                                height: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -498,6 +526,9 @@ Color _iconColorFor(String title) {
     'Supply Spine' => const Color(0xFF7A8B35),
     'Siege Ring' => const Color(0xFF6A576E),
     'Three Approaches' => const Color(0xFF315F7D),
+    'Command Piece' => const Color(0xFF1C2530),
+    'General + Cohort' => const Color(0xFF9A3028),
+    'March Column' => const Color(0xFF3D6E71),
     _ => const Color(0xFF7B2D26),
   };
 }
@@ -513,6 +544,9 @@ Color _softColorFor(String title) {
     'Supply Spine' => const Color(0xFFE2F4C8),
     'Siege Ring' => const Color(0xFFE7D8FF),
     'Three Approaches' => const Color(0xFFD9E8FF),
+    'Command Piece' => const Color(0xFFE4E8EE),
+    'General + Cohort' => const Color(0xFFFFD6BD),
+    'March Column' => const Color(0xFFCFECE3),
     _ => const Color(0xFFFFF0B7),
   };
 }

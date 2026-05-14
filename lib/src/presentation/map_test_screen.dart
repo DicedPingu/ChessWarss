@@ -12,6 +12,9 @@ enum MapTestType {
   supplySpine,
   siegeRing,
   threeApproaches,
+  commandPiece,
+  generalCohort,
+  marchColumn,
 }
 
 extension MapTestTypeCopy on MapTestType {
@@ -25,6 +28,9 @@ extension MapTestTypeCopy on MapTestType {
     MapTestType.supplySpine => 'Supply Spine',
     MapTestType.siegeRing => 'Siege Ring',
     MapTestType.threeApproaches => 'Three Approaches',
+    MapTestType.commandPiece => 'Command Piece',
+    MapTestType.generalCohort => 'General + Cohort',
+    MapTestType.marchColumn => 'March Column',
   };
 
   String get title => cardTitle;
@@ -39,6 +45,9 @@ extension MapTestTypeCopy on MapTestType {
     MapTestType.supplySpine => 'Supply line',
     MapTestType.siegeRing => 'Encircle',
     MapTestType.threeApproaches => '3 routes',
+    MapTestType.commandPiece => 'One commander',
+    MapTestType.generalCohort => 'Full stack',
+    MapTestType.marchColumn => 'Moving column',
   };
 
   String get worksNow => switch (this) {
@@ -51,6 +60,10 @@ extension MapTestTypeCopy on MapTestType {
     MapTestType.supplySpine => 'Depots make the safe line obvious.',
     MapTestType.siegeRing => 'Ring roads show how to encircle a fort.',
     MapTestType.threeApproaches => 'Left, center, right routes are distinct.',
+    MapTestType.commandPiece => 'Army is one readable general on a raised hex.',
+    MapTestType.generalCohort => 'General fronts K/Q/R/B/N/P on the same hex.',
+    MapTestType.marchColumn =>
+      'General leads, pieces trail behind as a moving group.',
   };
 
   String get notProven => switch (this) {
@@ -63,6 +76,9 @@ extension MapTestTypeCopy on MapTestType {
     MapTestType.supplySpine => 'May become escort busywork.',
     MapTestType.siegeRing => 'May need defender tools.',
     MapTestType.threeApproaches => 'May be too abstract.',
+    MapTestType.commandPiece => 'May hide army composition.',
+    MapTestType.generalCohort => 'May become crowded on phones.',
+    MapTestType.marchColumn => 'May imply separate units too strongly.',
   };
 
   String get direction => switch (this) {
@@ -75,6 +91,9 @@ extension MapTestTypeCopy on MapTestType {
     MapTestType.supplySpine => 'Line protection.',
     MapTestType.siegeRing => 'Fort pressure.',
     MapTestType.threeApproaches => 'Route comparison.',
+    MapTestType.commandPiece => 'General-only army read.',
+    MapTestType.generalCohort => 'General plus full chess army.',
+    MapTestType.marchColumn => 'Formation and movement read.',
   };
 
   IconData get icon => switch (this) {
@@ -87,6 +106,9 @@ extension MapTestTypeCopy on MapTestType {
     MapTestType.supplySpine => Icons.grass_rounded,
     MapTestType.siegeRing => Icons.fort_rounded,
     MapTestType.threeApproaches => Icons.call_split_rounded,
+    MapTestType.commandPiece => Icons.military_tech_rounded,
+    MapTestType.generalCohort => Icons.groups_3_rounded,
+    MapTestType.marchColumn => Icons.double_arrow_rounded,
   };
 }
 
@@ -314,6 +336,7 @@ class _HexTrialBoard extends StatelessWidget {
                       activeSide: activeSide,
                       selectedSide: selectedSide,
                       reachable: reachableIds.contains(tile.id),
+                      formationStyle: spec.formationStyle,
                       onTap: () => onTileTap(tile.id),
                     ),
                   ),
@@ -340,6 +363,7 @@ class _HexTrialTile extends StatelessWidget {
     required this.activeSide,
     required this.selectedSide,
     required this.reachable,
+    required this.formationStyle,
     required this.onTap,
   });
 
@@ -348,6 +372,7 @@ class _HexTrialTile extends StatelessWidget {
   final _ArmySide activeSide;
   final _ArmySide? selectedSide;
   final bool reachable;
+  final _FormationStyle formationStyle;
   final VoidCallback onTap;
 
   @override
@@ -435,6 +460,7 @@ class _HexTrialTile extends StatelessWidget {
                     key: ValueKey('map-test-army-${army!.side.name}'),
                     army: army!,
                     active: activeArmy,
+                    formationStyle: formationStyle,
                   ),
               ],
             ),
@@ -446,7 +472,39 @@ class _HexTrialTile extends StatelessWidget {
 }
 
 class _ArmyMarker extends StatelessWidget {
-  const _ArmyMarker({super.key, required this.army, required this.active});
+  const _ArmyMarker({
+    super.key,
+    required this.army,
+    required this.active,
+    required this.formationStyle,
+  });
+
+  final _TrialArmy army;
+  final bool active;
+  final _FormationStyle formationStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (formationStyle) {
+      _FormationStyle.badge => _BadgeArmyMarker(army: army, active: active),
+      _FormationStyle.generalOnly => _GeneralOnlyMarker(
+        army: army,
+        active: active,
+      ),
+      _FormationStyle.generalStack => _GeneralStackMarker(
+        army: army,
+        active: active,
+      ),
+      _FormationStyle.marchColumn => _MarchColumnMarker(
+        army: army,
+        active: active,
+      ),
+    };
+  }
+}
+
+class _BadgeArmyMarker extends StatelessWidget {
+  const _BadgeArmyMarker({required this.army, required this.active});
 
   final _TrialArmy army;
   final bool active;
@@ -486,6 +544,230 @@ class _ArmyMarker extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GeneralOnlyMarker extends StatelessWidget {
+  const _GeneralOnlyMarker({required this.army, required this.active});
+
+  final _TrialArmy army;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 42,
+      height: 46,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: 3,
+            child: _GeneralToken(army: army, active: active, size: 36),
+          ),
+          Positioned(
+            bottom: 0,
+            child: _NamePlate(text: army.shortName, color: army.color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GeneralStackMarker extends StatelessWidget {
+  const _GeneralStackMarker({required this.army, required this.active});
+
+  final _TrialArmy army;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 52,
+      height: 54,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          for (var index = 0; index < army.pieces.length; index++)
+            Positioned(
+              left: 2 + (index % 3) * 15,
+              bottom: index < 3 ? 3 : 17,
+              child: _ChessPieceChip(
+                key: ValueKey(
+                  'stack-piece-${army.side.name}-${army.pieces[index]}',
+                ),
+                text: army.pieces[index],
+                color: army.color,
+              ),
+            ),
+          Positioned(
+            top: -1,
+            child: _GeneralToken(army: army, active: active, size: 32),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MarchColumnMarker extends StatelessWidget {
+  const _MarchColumnMarker({required this.army, required this.active});
+
+  final _TrialArmy army;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 54,
+      height: 52,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          for (var index = 0; index < 4; index++)
+            Positioned(
+              left: 5 + index * 7,
+              bottom: 3 + index * 4,
+              child: _ChessPieceChip(
+                key: ValueKey(
+                  'trail-piece-${army.side.name}-${army.pieces[index]}',
+                ),
+                text: army.pieces[index],
+                color: army.color,
+              ),
+            ),
+          Positioned(
+            right: 2,
+            top: 1,
+            child: _GeneralToken(army: army, active: active, size: 34),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GeneralToken extends StatelessWidget {
+  const _GeneralToken({
+    required this.army,
+    required this.active,
+    required this.size,
+  });
+
+  final _TrialArmy army;
+  final bool active;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: '${army.generalName}, ${army.commandTrait}',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF191B1E),
+          border: Border.all(
+            color: active ? const Color(0xFFFFD166) : const Color(0xFFE6B65E),
+            width: active ? 2.4 : 1.6,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: army.color.withValues(alpha: active ? 0.62 : 0.34),
+              blurRadius: active ? 13 : 6,
+              spreadRadius: active ? 2 : 0,
+            ),
+          ],
+        ),
+        child: SizedBox.square(
+          dimension: size,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(Icons.military_tech_rounded, color: army.color, size: 20),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Text(
+                  army.generalInitial,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChessPieceChip extends StatelessWidget {
+  const _ChessPieceChip({super.key, required this.text, required this.color});
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color, width: 1.4),
+      ),
+      child: SizedBox.square(
+        dimension: 14,
+        child: Center(
+          child: Text(
+            text,
+            maxLines: 1,
+            style: TextStyle(
+              color: color,
+              fontSize: 8,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NamePlate extends StatelessWidget {
+  const _NamePlate({required this.text, required this.color});
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: Colors.white, width: 1.2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+        child: Text(
+          text,
+          maxLines: 1,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 8,
+            fontWeight: FontWeight.w900,
+            height: 1,
           ),
         ),
       ),
@@ -790,6 +1072,7 @@ class _HexTrialSpec {
     required this.edges,
     required this.armies,
     this.movement = _MovementRule.adjacent,
+    this.formationStyle = _FormationStyle.badge,
   }) : tileById = Map.unmodifiable({for (final tile in tiles) tile.id: tile}),
        armyBySide = Map.unmodifiable({
          for (final army in armies) army.side: army,
@@ -805,6 +1088,7 @@ class _HexTrialSpec {
   final List<_HexEdge> edges;
   final List<_TrialArmy> armies;
   final _MovementRule movement;
+  final _FormationStyle formationStyle;
   final Map<String, _HexTile> tileById;
   final Map<_ArmySide, _TrialArmy> armyBySide;
 
@@ -851,6 +1135,8 @@ class _HexTrialSpec {
 }
 
 enum _MovementRule { adjacent, roadTempo, portHop }
+
+enum _FormationStyle { badge, generalOnly, generalStack, marchColumn }
 
 class _HexTile {
   const _HexTile({
@@ -931,6 +1217,9 @@ class _TrialArmy {
   final String startTileId;
   final Color color;
   final IconData icon;
+  List<String> get pieces => const ['K', 'Q', 'R', 'B', 'N', 'P'];
+
+  String get generalInitial => generalName.substring(0, 1).toUpperCase();
 }
 
 enum _ArmySide { rome, enemy }
@@ -995,6 +1284,9 @@ _HexTrialSpec _specFor(MapTestType type) {
     MapTestType.supplySpine => _supplySpineSpec(),
     MapTestType.siegeRing => _siegeRingSpec(),
     MapTestType.threeApproaches => _threeApproachesSpec(),
+    MapTestType.commandPiece => _commandPieceSpec(),
+    MapTestType.generalCohort => _generalCohortSpec(),
+    MapTestType.marchColumn => _marchColumnSpec(),
   };
 }
 
@@ -1210,6 +1502,94 @@ _HexTrialSpec _threeApproachesSpec() {
   );
 }
 
+_HexTrialSpec _commandPieceSpec() {
+  final (tiles, edges) = _hexGrid(
+    rows: 5,
+    cols: 5,
+    road: {'H41', 'H30', 'H21', 'H12', 'H02'},
+    hill: {'H21', 'H22', 'H12'},
+    forest: {'H10', 'H31', 'H33'},
+    fort: {'H03'},
+  );
+  return _HexTrialSpec(
+    name: MapTestType.commandPiece.title,
+    feel: 'Raised hexes, clean command token, no crowded army blob.',
+    worksNow: MapTestType.commandPiece.worksNow,
+    notProven: MapTestType.commandPiece.notProven,
+    background: const Color(0xFF142232),
+    routeColor: const Color(0x99EAD7A0),
+    tiles: tiles,
+    edges: edges,
+    movement: _MovementRule.roadTempo,
+    formationStyle: _FormationStyle.generalOnly,
+    armies: _armies(
+      romeStart: 'H41',
+      enemyStart: 'H02',
+      romeGeneralName: 'Livia Varro',
+      enemyGeneralName: 'Brennos',
+    ),
+  );
+}
+
+_HexTrialSpec _generalCohortSpec() {
+  final (tiles, edges) = _hexGrid(
+    rows: 5,
+    cols: 5,
+    road: {'H41', 'H31', 'H22', 'H13', 'H02'},
+    supply: {'H31', 'H13'},
+    hill: {'H22'},
+    forest: {'H10', 'H20', 'H33'},
+  );
+  return _HexTrialSpec(
+    name: MapTestType.generalCohort.title,
+    feel: 'General in front, full chess army packed behind on one hex.',
+    worksNow: MapTestType.generalCohort.worksNow,
+    notProven: MapTestType.generalCohort.notProven,
+    background: const Color(0xFF223421),
+    routeColor: const Color(0xAAFFD166),
+    tiles: tiles,
+    edges: edges,
+    formationStyle: _FormationStyle.generalStack,
+    armies: _armies(
+      romeStart: 'H41',
+      enemyStart: 'H02',
+      romeGeneralName: 'Livia Varro',
+      enemyGeneralName: 'Mara of the Hill',
+    ),
+  );
+}
+
+_HexTrialSpec _marchColumnSpec() {
+  final blocked = {'H22'};
+  final (tiles, edges) = _hexGrid(
+    rows: 5,
+    cols: 5,
+    blocked: blocked,
+    road: {'H41', 'H30', 'H20', 'H11', 'H02', 'H31', 'H23', 'H13'},
+    bridge: {'H20', 'H23'},
+    forest: {'H10', 'H32', 'H33'},
+    hill: {'H12'},
+  );
+  return _HexTrialSpec(
+    name: MapTestType.marchColumn.title,
+    feel: 'Pieces trail the commander so movement reads like a column.',
+    worksNow: MapTestType.marchColumn.worksNow,
+    notProven: MapTestType.marchColumn.notProven,
+    background: const Color(0xFF272B2F),
+    routeColor: const Color(0xAACDE8FF),
+    tiles: tiles,
+    edges: _withoutBlocked(edges, blocked),
+    movement: _MovementRule.roadTempo,
+    formationStyle: _FormationStyle.marchColumn,
+    armies: _armies(
+      romeStart: 'H41',
+      enemyStart: 'H02',
+      romeGeneralName: 'Aulus Varro',
+      enemyGeneralName: 'Mara of the Hill',
+    ),
+  );
+}
+
 List<_HexEdge> _withoutBlocked(List<_HexEdge> edges, Set<String> blocked) {
   return edges
       .where((edge) => !blocked.contains(edge.a) && !blocked.contains(edge.b))
@@ -1219,13 +1599,15 @@ List<_HexEdge> _withoutBlocked(List<_HexEdge> edges, Set<String> blocked) {
 List<_TrialArmy> _armies({
   required String romeStart,
   required String enemyStart,
+  String romeGeneralName = 'Aulus Varro',
+  String enemyGeneralName = 'Brennos',
 }) {
   return [
     _TrialArmy(
       side: _ArmySide.rome,
       name: 'Roman Vanguard',
       shortName: 'ROM',
-      generalName: 'Aulus Varro',
+      generalName: romeGeneralName,
       commandTrait: 'Veteran',
       commandHint: 'Fast baseline commander.',
       startTileId: romeStart,
@@ -1236,7 +1618,7 @@ List<_TrialArmy> _armies({
       side: _ArmySide.enemy,
       name: 'Hill Host',
       shortName: 'HST',
-      generalName: 'Brennos',
+      generalName: enemyGeneralName,
       commandTrait: 'Drummer',
       commandHint: 'Simple enemy pressure.',
       startTileId: enemyStart,
