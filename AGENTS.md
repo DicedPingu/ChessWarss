@@ -2,7 +2,8 @@
 
 ## MCP Stack
 
-- Keep the MCP stack minimal for this repo: `dart`, `github`.
+- Keep the repo-critical MCP stack focused on `dart` and `github`.
+- Useful global MCP servers such as `context7`, `openaiDeveloperDocs`, `fetch`, and `chrome-devtools` may also be enabled.
 - Keep `features.apps = true` in Codex config so app-based research tools are available.
 - Do not add a `filesystem` MCP server for this repo. Local shell + repo tools already cover file access.
 
@@ -27,6 +28,10 @@
 - Before merge/review requests, run `dart run tool/check_dependencies.dart`.
 - Avoid destructive git commands unless the user explicitly requests them.
 
-## Validation
+## Git and Release Trail
 
-- Use `./tool/check_mcp_stack.sh` to validate local Codex MCP configuration quickly.
+- This repo is meant to be committed and pushed to `origin` (`DicedPingu/ChessWarss`) when meaningful, validated work lands.
+- Use scoped commits so broken experiments can be inspected or reverted cleanly.
+- Do not stage unrelated dirty worktree files just to make a commit.
+- After UI/mechanics/docs changes, run the narrow relevant Flutter checks first, then push only after the commit represents a coherent testable state.
+- `Tabulae Probationis` is the proving ground for mechanics that may or may not ship. Keep those prototypes honest: show what works, what is not proven, and what direction the test supports.
