@@ -12,8 +12,16 @@ Future<void> _pumpApp(WidgetTester tester) async {
 }
 
 Future<void> _enterCasusBelliSetup(WidgetTester tester) async {
-  await tester.ensureVisible(find.text('CASUS BELLI'));
   await tester.tap(find.text('CASUS BELLI'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Start Cause for War'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _enterProvingTables(WidgetTester tester) async {
+  await tester.tap(find.text('TABULAE PROBATIONIS'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Start Proving Tables'));
   await tester.pumpAndSettle();
 }
 
@@ -40,36 +48,62 @@ void main() {
   ) async {
     await _pumpApp(tester);
 
-    expect(find.text('Select Your Campaign'), findsOneWidget);
-    expect(find.text('ETERNA'), findsOneWidget);
-    expect(find.text('Eternal'), findsOneWidget);
+    expect(
+      find.text('Choose a mode. Tap once for details, then start.'),
+      findsOneWidget,
+    );
+    expect(find.text('ROMA AETERNA'), findsWidgets);
+    expect(find.text('Eternal Rome'), findsOneWidget);
     expect(find.text('CASUS BELLI'), findsOneWidget);
-    expect(find.text('Cause for War'), findsOneWidget);
+    expect(find.textContaining('Cause for War'), findsWidgets);
     expect(find.text('TABULAE PROBATIONIS'), findsOneWidget);
-    expect(find.text('Test Tables'), findsOneWidget);
+    expect(find.textContaining('Proving Tables'), findsWidgets);
+    expect(find.text('Start Eternal Rome'), findsOneWidget);
   });
 
-  testWidgets('tabulae probationis shows prototype direction', (
+  testWidgets('tabulae probationis shows playable map directions', (
     WidgetTester tester,
   ) async {
     await _pumpApp(tester);
 
-    await tester.ensureVisible(find.text('TABULAE PROBATIONIS'));
-    await tester.tap(find.text('TABULAE PROBATIONIS'));
-    await tester.pumpAndSettle();
+    await _enterProvingTables(tester);
 
-    expect(find.text('Tabulae Probationis'), findsOneWidget);
-    expect(find.text('Logistics & Siege Simulation'), findsOneWidget);
-    expect(find.text('Standard Grid (Square)'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Hexagonal (6-Edged)'),
-      120,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Hexagonal (6-Edged)'), findsOneWidget);
-    expect(find.textContaining('Works now:'), findsWidgets);
+    expect(find.text('Tabulae Probationis / Proving Tables'), findsOneWidget);
+    expect(find.text('Logistics & Siege'), findsWidgets);
+    expect(find.text('Square Warboard'), findsWidgets);
+    expect(find.text('Hex Campaign'), findsOneWidget);
+    expect(find.text('Province Web'), findsOneWidget);
+    expect(find.text('Three Fronts'), findsOneWidget);
+    expect(find.text('Island Crossings'), findsOneWidget);
+    expect(find.textContaining('Works:'), findsWidgets);
     expect(find.textContaining('Not proven:'), findsWidgets);
     expect(find.textContaining('Direction:'), findsWidgets);
+  });
+
+  testWidgets('map prototype lets player select and move', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await _pumpApp(tester);
+
+    await _enterProvingTables(tester);
+    await tester.tap(find.text('Square Warboard').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open Test'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Square Warboard Test'), findsOneWidget);
+    expect(find.textContaining('Army: E1'), findsOneWidget);
+    expect(find.text('Move Here'), findsOneWidget);
+
+    await tester.tap(find.text('E2'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Move Here'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Army: E2'), findsOneWidget);
+    expect(find.textContaining('Moves: 1'), findsOneWidget);
   });
 
   testWidgets('can start Casus Belli and reach world map', (
@@ -128,11 +162,11 @@ void main() {
   ) async {
     await _pumpApp(tester);
 
-    await tester.ensureVisible(find.text('TABULAE PROBATIONIS'));
-    await tester.tap(find.text('TABULAE PROBATIONIS'));
-    await tester.pumpAndSettle();
+    await _enterProvingTables(tester);
 
-    await tester.tap(find.text('Logistics & Siege Simulation'));
+    await tester.tap(find.text('Logistics & Siege').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open Test'));
     await tester.pumpAndSettle();
 
     expect(find.text('Prototype Status'), findsOneWidget);
