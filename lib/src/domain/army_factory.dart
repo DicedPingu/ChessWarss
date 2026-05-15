@@ -59,15 +59,15 @@ class ArmyFactory {
       units: [
         ArmyUnit(type: PieceType.rook),
         ArmyUnit(type: PieceType.rook),
+        ArmyUnit(type: PieceType.bishop),
         ArmyUnit(type: PieceType.knight),
-        ArmyUnit(type: PieceType.pawn),
         ArmyUnit(type: PieceType.pawn),
         ArmyUnit(type: PieceType.pawn),
         ArmyUnit(
           type: PieceType.general,
-          generalSkill: GeneralSkill.fragileMarshal,
+          generalSkill: GeneralSkill.veteranCommander,
           generalRank: GeneralRank.highKing,
-          title: 'Nervous Marshal',
+          title: 'Iron Marshal',
         ),
       ],
     );
@@ -81,59 +81,53 @@ class ArmyFactory {
         ArmyUnit(type: PieceType.knight),
         ArmyUnit(type: PieceType.knight),
         ArmyUnit(type: PieceType.bishop),
-        ArmyUnit(type: PieceType.pawn),
-        ArmyUnit(type: PieceType.pawn),
+        ArmyUnit(type: PieceType.bishop),
         ArmyUnit(type: PieceType.pawn),
         ArmyUnit(type: PieceType.pawn),
         ArmyUnit(
           type: PieceType.general,
-          generalSkill: GeneralSkill.veteranCommander,
+          generalSkill: GeneralSkill.warDrummer,
           generalRank: GeneralRank.highKing,
-          title: 'Veteran Commander',
+          title: 'Grand Vanguard',
         ),
       ],
     );
   }
 
   ArmyDefinition _balancedWildcardArmy(Random random) {
-    final minorPair = random.nextBool()
-        ? const [PieceType.knight, PieceType.knight]
-        : const [PieceType.bishop, PieceType.bishop];
-
-    return ArmyDefinition(
-      id: 'balanced_wildcard',
-      label: 'Balanced Wildcard',
+    return const ArmyDefinition(
+      id: 'royal_expedition',
+      label: 'Royal Expedition',
       units: [
-        const ArmyUnit(type: PieceType.rook),
-        ArmyUnit(type: minorPair[0]),
-        ArmyUnit(type: minorPair[1]),
-        const ArmyUnit(type: PieceType.pawn),
-        const ArmyUnit(type: PieceType.pawn),
-        const ArmyUnit(type: PieceType.pawn),
-        const ArmyUnit(
+        ArmyUnit(type: PieceType.rook),
+        ArmyUnit(type: PieceType.knight),
+        ArmyUnit(type: PieceType.bishop),
+        ArmyUnit(type: PieceType.pawn),
+        ArmyUnit(type: PieceType.pawn),
+        ArmyUnit(type: PieceType.pawn),
+        ArmyUnit(
           type: PieceType.general,
           generalSkill: GeneralSkill.fieldCommander,
           generalRank: GeneralRank.highKing,
-          title: 'Rising Commander',
+          title: 'Royal Heir',
         ),
       ],
     );
   }
 
   ArmyDefinition _frontierHostArmy(Random random) {
-    final flankType = random.nextBool() ? PieceType.knight : PieceType.bishop;
-    return ArmyDefinition(
+    return const ArmyDefinition(
       id: 'frontier_host',
       label: 'Frontier Host',
       units: [
-        const ArmyUnit(type: PieceType.rook),
-        ArmyUnit(type: flankType),
-        const ArmyUnit(type: PieceType.pawn),
-        const ArmyUnit(type: PieceType.pawn),
-        const ArmyUnit(type: PieceType.pawn),
-        const ArmyUnit(type: PieceType.pawn),
-        const ArmyUnit(type: PieceType.pawn),
-        const ArmyUnit(
+        ArmyUnit(type: PieceType.rook),
+        ArmyUnit(type: PieceType.knight),
+        ArmyUnit(type: PieceType.bishop),
+        ArmyUnit(type: PieceType.pawn),
+        ArmyUnit(type: PieceType.pawn),
+        ArmyUnit(type: PieceType.pawn),
+        ArmyUnit(type: PieceType.pawn),
+        ArmyUnit(
           type: PieceType.general,
           generalSkill: GeneralSkill.fieldCommander,
           generalRank: GeneralRank.highKing,

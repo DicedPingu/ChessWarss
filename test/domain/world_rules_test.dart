@@ -912,6 +912,84 @@ void main() {
       },
     );
 
+    test('river edges block movement except at crossings', () {
+      final tiles = <MapTile>[
+        for (var row = 0; row < 4; row++)
+          for (var col = 0; col < 4; col++)
+            MapTile(
+              position: BoardPosition(row, col),
+              terrain: TerrainType.passable,
+              battlefield: const BattlefieldSpec(
+                rows: 6,
+                cols: 6,
+                blocked: <BoardPosition>{},
+                notation: '6x6:0:test',
+              ),
+            ),
+      ];
+      const scoutArmy = ArmyDefinition(
+        id: 'scout',
+        label: 'Scout',
+        units: [
+          ArmyUnit(
+            type: PieceType.general,
+            generalSkill: GeneralSkill.fieldCommander,
+          ),
+        ],
+      );
+      final world = WorldState(
+        size: 4,
+        tiles: tiles,
+        riverEdges: [
+          RiverEdge(
+            a: const BoardPosition(1, 1),
+            b: const BoardPosition(1, 2),
+            type: RiverEdgeType.river,
+          ),
+          RiverEdge(
+            a: const BoardPosition(2, 1),
+            b: const BoardPosition(2, 2),
+            type: RiverEdgeType.bridge,
+          ),
+        ],
+        players: const [PlayerSlot(id: 0, type: PlayerType.human, name: 'P1')],
+        activePlayerIndex: 0,
+        round: 1,
+        stacks: const [
+          ArmyStack(
+            id: 'P1-A1',
+            ownerId: 0,
+            army: scoutArmy,
+            position: BoardPosition(1, 1),
+            label: 'A1',
+          ),
+        ],
+        preset: MapPreset.greatField,
+        seed: 1,
+        log: const [],
+      );
+
+      final legal = world.legalMovesForStack('P1-A1', maxSteps: 2);
+
+      expect(legal, isNot(contains(const BoardPosition(1, 2))));
+      expect(
+        world.canTraverseBetween(
+          const BoardPosition(1, 1),
+          const BoardPosition(1, 2),
+        ),
+        isFalse,
+      );
+      expect(
+        world.canTraverseBetween(
+          const BoardPosition(2, 1),
+          const BoardPosition(2, 2),
+        ),
+        isTrue,
+      );
+      expect(world.tileTouchesRiver(const BoardPosition(1, 1)), isTrue);
+      expect(world.tileTouchesCrossing(const BoardPosition(2, 1)), isTrue);
+    });
+
     test(
       'army stack copyWith can explicitly clear temporary campaign flags',
       () {

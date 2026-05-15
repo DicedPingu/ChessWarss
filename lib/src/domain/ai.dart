@@ -161,6 +161,11 @@ class StrategicAi {
         score +=
             _frontlinePressureScore(world, move, playerId) *
             difficulty.strategicPlanningWeight;
+        if (world.tileTouchesCrossing(move)) {
+          score += 2.2 * difficulty.strategicPlanningWeight;
+        } else if (world.tileTouchesRiver(move)) {
+          score += 0.8 * difficulty.strategicPlanningWeight;
+        }
 
         final simulated = _simulatedWorldAfterMove(
           world: world,
@@ -239,6 +244,12 @@ class StrategicAi {
           SettlementTier.town => 1.3,
           SettlementTier.castle => 1.8,
         };
+      }
+      if (world.tileTouchesRiver(stack.position)) {
+        score += 2.6;
+      }
+      if (world.tileTouchesCrossing(stack.position)) {
+        score += 1.4;
       }
 
       final pressure = _enemyAdjacentCount(world, stack.position, playerId);

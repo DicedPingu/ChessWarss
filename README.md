@@ -10,6 +10,7 @@ ChessWarss is a Flutter strategy prototype where the campaign layer is Total War
 - Battles: chess-like movement and positional combat as the main resolver.
 - Historical tone: strongly Roman-inspired, but not strict historical reenactment, take inspiration from Total War, also Kings and Generals and the Invicta series on YouTube.
 - It should be simple and keep the style of chess, yet have possibilities for interesting playability and fun.
+- Inside the folder .inspiration are some screenshots of how it should look like, and some scetches as to how the generals might look like.
 
 ## Non-Negotiable Direction
 

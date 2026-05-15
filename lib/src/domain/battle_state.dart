@@ -13,6 +13,8 @@ enum BattleEventType {
   rout,
   generalProgress,
   generalSkill,
+  charge,
+  defend,
 }
 
 enum MoraleState { steady, wavering, routing, collapsed }
@@ -90,6 +92,8 @@ class BattleState {
     this.generalSkillUsedByPlayer = const <int, bool>{},
     this.trapArmedByPlayer = const <int, bool>{},
     this.trapColumnByPlayer = const <int, int>{},
+    this.chargeByPlayer = const <int, bool>{},
+    this.defendByPlayer = const <int, bool>{},
   });
 
   final int rows;
@@ -107,6 +111,50 @@ class BattleState {
   final Map<int, bool> generalSkillUsedByPlayer;
   final Map<int, bool> trapArmedByPlayer;
   final Map<int, int> trapColumnByPlayer;
+  final Map<int, bool> chargeByPlayer;
+  final Map<int, bool> defendByPlayer;
+
+  BattleState copyWith({
+    int? rows,
+    int? cols,
+    int? activePlayer,
+    int? southPlayerId,
+    int? northPlayerId,
+    List<BattlePiece>? pieces,
+    List<String>? moveLog,
+    List<BattleEvent>? eventLog,
+    Set<BoardPosition>? blockedCells,
+    bool? disableOpeningCaptures,
+    Map<int, int>? moraleByPlayer,
+    int? maxMorale,
+    Map<int, bool>? generalSkillUsedByPlayer,
+    Map<int, bool>? trapArmedByPlayer,
+    Map<int, int>? trapColumnByPlayer,
+    Map<int, bool>? chargeByPlayer,
+    Map<int, bool>? defendByPlayer,
+  }) {
+    return BattleState(
+      rows: rows ?? this.rows,
+      cols: cols ?? this.cols,
+      activePlayer: activePlayer ?? this.activePlayer,
+      southPlayerId: southPlayerId ?? this.southPlayerId,
+      northPlayerId: northPlayerId ?? this.northPlayerId,
+      pieces: pieces ?? this.pieces,
+      moveLog: moveLog ?? this.moveLog,
+      eventLog: eventLog ?? this.eventLog,
+      blockedCells: blockedCells ?? this.blockedCells,
+      disableOpeningCaptures:
+          disableOpeningCaptures ?? this.disableOpeningCaptures,
+      moraleByPlayer: moraleByPlayer ?? this.moraleByPlayer,
+      maxMorale: maxMorale ?? this.maxMorale,
+      generalSkillUsedByPlayer:
+          generalSkillUsedByPlayer ?? this.generalSkillUsedByPlayer,
+      trapArmedByPlayer: trapArmedByPlayer ?? this.trapArmedByPlayer,
+      trapColumnByPlayer: trapColumnByPlayer ?? this.trapColumnByPlayer,
+      chargeByPlayer: chargeByPlayer ?? this.chargeByPlayer,
+      defendByPlayer: defendByPlayer ?? this.defendByPlayer,
+    );
+  }
 
   factory BattleState.fromArmies({
     required ArmyDefinition southArmy,
@@ -191,6 +239,8 @@ class BattleState {
       },
       trapArmedByPlayer: trapArmedByPlayer,
       trapColumnByPlayer: trapColumnByPlayer,
+      chargeByPlayer: <int, bool>{southOwnerId: false, northOwnerId: false},
+      defendByPlayer: <int, bool>{southOwnerId: false, northOwnerId: false},
     );
   }
 
@@ -279,6 +329,8 @@ class BattleState {
             disableOpeningCaptures: false,
             moraleByPlayer: <int, int>{southOwnerId: 6, northOwnerId: 6},
             generalSkillUsedByPlayer: const <int, bool>{},
+            chargeByPlayer: const <int, bool>{},
+            defendByPlayer: const <int, bool>{},
           );
 
           final southOpeningCapture = probeState
@@ -778,6 +830,18 @@ class BattleState {
       PieceType.general => _generalMoves(piece),
     };
 
+    // If defending, pieces cannot move, but they are harder to capture (implemented in contact resolution).
+    if (defendByPlayer[playerId] == true) {
+      return const [];
+    }
+
+    // If charging, pawns and knights get extra reach but must move forward or capture.
+    if (chargeByPlayer[playerId] == true &&
+        (piece.type == PieceType.pawn || piece.type == PieceType.knight)) {
+      // Basic charge: keep existing moves but emphasize forward momentum.
+      // (In a more complex sim, we'd add extra range here).
+    }
+
     if (!ignoreOpeningCaptureBlock &&
         _capturesBlockedForOpening(piece.ownerId)) {
       return moves.where((position) {
@@ -963,6 +1027,8 @@ class BattleState {
         case BattleEventType.moraleShift:
         case BattleEventType.generalProgress:
         case BattleEventType.generalSkill:
+        case BattleEventType.charge:
+        case BattleEventType.defend:
           continue;
       }
     }
@@ -986,6 +1052,92 @@ class BattleState {
       maxUnits: maxUnits,
       fromGeneralSkill: false,
       skillLabel: null,
+    );
+  }
+
+  bool canCharge() {
+    if (chargeByPlayer[activePlayer] == true ||
+        defendByPlayer[activePlayer] == true) {
+      return false;
+    }
+    // Need at least 2 pawns/knights to charge.
+    final mobileUnits = piecesForPlayer(activePlayer)
+        .where((p) => p.type == PieceType.pawn || p.type == PieceType.knight)
+        .length;
+    return mobileUnits >= 2;
+  }
+
+  bool canDefend() {
+    if (chargeByPlayer[activePlayer] == true ||
+        defendByPlayer[activePlayer] == true) {
+      return false;
+    }
+    return piecesForPlayer(activePlayer).length >= 3;
+  }
+
+  BattleState useCharge() {
+    if (!canCharge()) {
+      return this;
+    }
+    final turn = moveLog.length + 1;
+    final updatedCharge = <int, bool>{...chargeByPlayer, activePlayer: true};
+    final event = BattleEvent(
+      turn: turn,
+      type: BattleEventType.charge,
+      actorPlayerId: activePlayer,
+      description: 'P${activePlayer + 1} ordered a charge! Momentum increased.',
+    );
+    return BattleState(
+      rows: rows,
+      cols: cols,
+      activePlayer: otherPlayer,
+      southPlayerId: southPlayerId,
+      northPlayerId: northPlayerId,
+      pieces: pieces,
+      moveLog: [...moveLog, 'P${activePlayer + 1} Charge'],
+      eventLog: [...eventLog, event],
+      blockedCells: blockedCells,
+      disableOpeningCaptures: disableOpeningCaptures,
+      moraleByPlayer: moraleByPlayer,
+      maxMorale: maxMorale,
+      generalSkillUsedByPlayer: generalSkillUsedByPlayer,
+      trapArmedByPlayer: trapArmedByPlayer,
+      trapColumnByPlayer: trapColumnByPlayer,
+      chargeByPlayer: updatedCharge,
+      defendByPlayer: defendByPlayer,
+    );
+  }
+
+  BattleState useDefend() {
+    if (!canDefend()) {
+      return this;
+    }
+    final turn = moveLog.length + 1;
+    final updatedDefend = <int, bool>{...defendByPlayer, activePlayer: true};
+    final event = BattleEvent(
+      turn: turn,
+      type: BattleEventType.defend,
+      actorPlayerId: activePlayer,
+      description: 'P${activePlayer + 1} stands firm! Defense reinforced.',
+    );
+    return BattleState(
+      rows: rows,
+      cols: cols,
+      activePlayer: otherPlayer,
+      southPlayerId: southPlayerId,
+      northPlayerId: northPlayerId,
+      pieces: pieces,
+      moveLog: [...moveLog, 'P${activePlayer + 1} Defend'],
+      eventLog: [...eventLog, event],
+      blockedCells: blockedCells,
+      disableOpeningCaptures: disableOpeningCaptures,
+      moraleByPlayer: moraleByPlayer,
+      maxMorale: maxMorale,
+      generalSkillUsedByPlayer: generalSkillUsedByPlayer,
+      trapArmedByPlayer: trapArmedByPlayer,
+      trapColumnByPlayer: trapColumnByPlayer,
+      chargeByPlayer: chargeByPlayer,
+      defendByPlayer: updatedDefend,
     );
   }
 
@@ -1375,6 +1527,8 @@ class BattleState {
       generalSkillUsedByPlayer: updatedSkillUse,
       trapArmedByPlayer: updatedTraps,
       trapColumnByPlayer: trapColumnByPlayer,
+      chargeByPlayer: chargeByPlayer,
+      defendByPlayer: defendByPlayer,
     );
   }
 
@@ -1568,6 +1722,8 @@ class BattleState {
       generalSkillUsedByPlayer: generalSkillUsedByPlayer,
       trapArmedByPlayer: trapArmedByPlayer,
       trapColumnByPlayer: trapColumnByPlayer,
+      chargeByPlayer: chargeByPlayer,
+      defendByPlayer: defendByPlayer,
     );
   }
 
@@ -1645,8 +1801,13 @@ class BattleState {
         ? 1
         : 0;
 
+    final attackerCharging = chargeByPlayer[attacker.ownerId] == true;
+    final defenderDefending = defendByPlayer[defender.ownerId] == true;
+
     final swing =
         (fromGeneralSkill ? 1 : 0) +
+        (attackerCharging ? 1 : 0) -
+        (defenderDefending ? 1 : 0) +
         aggressionBonus +
         attackerPressure -
         defenderPressure +

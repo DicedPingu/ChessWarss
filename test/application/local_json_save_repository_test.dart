@@ -59,6 +59,13 @@ void main() {
         forcedMarchMode: false,
         selectedBattlePieceId: null,
         campaignOnboardingSeen: false,
+        stackSupplyById: const <String, int>{'P1-A1': 4},
+        stackStarvationById: const <String, int>{'P1-A1': 0},
+        stackWaterById: const <String, int>{'P1-A1': 4},
+        stackThirstById: const <String, int>{'P1-A1': 0},
+        capturePolicyByPlayer: const <int, String>{0: 'spare', 1: 'destroy'},
+        foodTileOwnerByPosition: const <String, int>{'4,0': 0},
+        pillagedTileUntilRound: const <String, int>{'2,2': 3},
         settings: const GameSettingsSnapshot(
           animationSpeed: 1.0,
           aiDelayMs: 750,
@@ -77,6 +84,8 @@ void main() {
       expect(loaded.worldState!.size, world.size);
       expect(loaded.worldState!.seed, world.seed);
       expect(loaded.worldState!.stacks.length, world.stacks.length);
+      expect(loaded.stackWaterById['P1-A1'], 4);
+      expect(loaded.foodTileOwnerByPosition['4,0'], 0);
       expect(loaded.settings.aiDelayMs, 750);
     });
 
@@ -108,6 +117,13 @@ void main() {
         forcedMarchMode: false,
         selectedBattlePieceId: null,
         campaignOnboardingSeen: false,
+        stackSupplyById: const <String, int>{},
+        stackStarvationById: const <String, int>{},
+        stackWaterById: const <String, int>{},
+        stackThirstById: const <String, int>{},
+        capturePolicyByPlayer: const <int, String>{},
+        foodTileOwnerByPosition: const <String, int>{},
+        pillagedTileUntilRound: const <String, int>{},
         settings: GameSettingsSnapshot.defaults,
       );
       await repository.saveSlot(SaveSlots.slot2, base);
@@ -132,6 +148,13 @@ void main() {
           forcedMarchMode: false,
           selectedBattlePieceId: null,
           campaignOnboardingSeen: true,
+          stackSupplyById: const <String, int>{},
+          stackStarvationById: const <String, int>{},
+          stackWaterById: const <String, int>{},
+          stackThirstById: const <String, int>{},
+          capturePolicyByPlayer: const <int, String>{},
+          foodTileOwnerByPosition: const <String, int>{},
+          pillagedTileUntilRound: const <String, int>{},
           settings: GameSettingsSnapshot.defaults,
         ),
       );
@@ -176,6 +199,13 @@ void main() {
         forcedMarchMode: false,
         selectedBattlePieceId: null,
         campaignOnboardingSeen: false,
+        stackSupplyById: const <String, int>{},
+        stackStarvationById: const <String, int>{},
+        stackWaterById: const <String, int>{},
+        stackThirstById: const <String, int>{},
+        capturePolicyByPlayer: const <int, String>{},
+        foodTileOwnerByPosition: const <String, int>{},
+        pillagedTileUntilRound: const <String, int>{},
         settings: GameSettingsSnapshot.defaults,
       );
 

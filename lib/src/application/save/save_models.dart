@@ -41,6 +41,13 @@ class GameSaveV1 {
     required this.forcedMarchMode,
     required this.selectedBattlePieceId,
     required this.campaignOnboardingSeen,
+    required this.stackSupplyById,
+    required this.stackStarvationById,
+    required this.stackWaterById,
+    required this.stackThirstById,
+    required this.capturePolicyByPlayer,
+    required this.foodTileOwnerByPosition,
+    required this.pillagedTileUntilRound,
     required this.settings,
   });
 
@@ -95,6 +102,19 @@ class GameSaveV1 {
       forcedMarchMode: _asBool(json['forcedMarchMode']),
       selectedBattlePieceId: _nullableString(json['selectedBattlePieceId']),
       campaignOnboardingSeen: _asBool(json['campaignOnboardingSeen']),
+      stackSupplyById: _stringIntMapFromJson(json['stackSupplyById']),
+      stackStarvationById: _stringIntMapFromJson(json['stackStarvationById']),
+      stackWaterById: _stringIntMapFromJson(json['stackWaterById']),
+      stackThirstById: _stringIntMapFromJson(json['stackThirstById']),
+      capturePolicyByPlayer: _intStringMapFromJson(
+        json['capturePolicyByPlayer'],
+      ),
+      foodTileOwnerByPosition: _stringIntMapFromJson(
+        json['foodTileOwnerByPosition'],
+      ),
+      pillagedTileUntilRound: _stringIntMapFromJson(
+        json['pillagedTileUntilRound'],
+      ),
       settings: settingsRaw == null
           ? GameSettingsSnapshot.defaults
           : GameSettingsSnapshot.fromJson(settingsRaw),
@@ -119,6 +139,13 @@ class GameSaveV1 {
   final bool forcedMarchMode;
   final String? selectedBattlePieceId;
   final bool campaignOnboardingSeen;
+  final Map<String, int> stackSupplyById;
+  final Map<String, int> stackStarvationById;
+  final Map<String, int> stackWaterById;
+  final Map<String, int> stackThirstById;
+  final Map<int, String> capturePolicyByPlayer;
+  final Map<String, int> foodTileOwnerByPosition;
+  final Map<String, int> pillagedTileUntilRound;
   final GameSettingsSnapshot settings;
 
   Map<String, dynamic> toJson() {
@@ -143,6 +170,13 @@ class GameSaveV1 {
       'forcedMarchMode': forcedMarchMode,
       'selectedBattlePieceId': selectedBattlePieceId,
       'campaignOnboardingSeen': campaignOnboardingSeen,
+      'stackSupplyById': _stringIntMapToJson(stackSupplyById),
+      'stackStarvationById': _stringIntMapToJson(stackStarvationById),
+      'stackWaterById': _stringIntMapToJson(stackWaterById),
+      'stackThirstById': _stringIntMapToJson(stackThirstById),
+      'capturePolicyByPlayer': _intStringMapToJson(capturePolicyByPlayer),
+      'foodTileOwnerByPosition': _stringIntMapToJson(foodTileOwnerByPosition),
+      'pillagedTileUntilRound': _stringIntMapToJson(pillagedTileUntilRound),
       'settings': settings.toJson(),
     };
   }
@@ -152,6 +186,7 @@ Map<String, dynamic> _worldStateToJson(WorldState world) {
   return <String, dynamic>{
     'size': world.size,
     'tiles': world.tiles.map(_mapTileToJson).toList(),
+    'riverEdges': world.riverEdges.map(_riverEdgeToJson).toList(),
     'settlements': world.settlements.map(_settlementToJson).toList(),
     'camps': world.camps.map(_campToJson).toList(),
     'players': world.players.map(_playerSlotToJson).toList(),
@@ -172,6 +207,9 @@ WorldState _worldStateFromJson(Map<String, dynamic> json) {
   return WorldState(
     size: _asInt(json['size'], 5),
     tiles: _listOfMaps(json['tiles']).map(_mapTileFromJson).toList(),
+    riverEdges: _listOfMaps(
+      json['riverEdges'],
+    ).map(_riverEdgeFromJson).toList(),
     settlements: _listOfMaps(
       json['settlements'],
     ).map(_settlementFromJson).toList(),
@@ -451,6 +489,26 @@ MapTile _mapTileFromJson(Map<String, dynamic> json) {
   );
 }
 
+Map<String, dynamic> _riverEdgeToJson(RiverEdge edge) {
+  return <String, dynamic>{
+    'a': _positionToJson(edge.a),
+    'b': _positionToJson(edge.b),
+    'type': edge.type.name,
+  };
+}
+
+RiverEdge _riverEdgeFromJson(Map<String, dynamic> json) {
+  return RiverEdge(
+    a: _positionFromJson(_map(json['a'])!),
+    b: _positionFromJson(_map(json['b'])!),
+    type: _enumByName(
+      RiverEdgeType.values,
+      _asString(json['type']),
+      RiverEdgeType.river,
+    ),
+  );
+}
+
 Map<String, dynamic> _battlefieldToJson(BattlefieldSpec spec) {
   return <String, dynamic>{
     'rows': spec.rows,
@@ -668,6 +726,10 @@ Map<String, dynamic> _intIntMapToJson(Map<int, int> source) {
   return source.map((key, value) => MapEntry('$key', value));
 }
 
+Map<String, dynamic> _stringIntMapToJson(Map<String, int> source) {
+  return source.map((key, value) => MapEntry(key, value));
+}
+
 Map<int, int> _intIntMapFromJson(dynamic raw) {
   final value = _map(raw);
   if (value == null) {
@@ -680,6 +742,38 @@ Map<int, int> _intIntMapFromJson(dynamic raw) {
       continue;
     }
     result[key] = _asInt(entry.value);
+  }
+  return result;
+}
+
+Map<String, int> _stringIntMapFromJson(dynamic raw) {
+  final value = _map(raw);
+  if (value == null) {
+    return const <String, int>{};
+  }
+  final result = <String, int>{};
+  for (final entry in value.entries) {
+    result[entry.key] = _asInt(entry.value);
+  }
+  return result;
+}
+
+Map<String, dynamic> _intStringMapToJson(Map<int, String> source) {
+  return source.map((key, value) => MapEntry('$key', value));
+}
+
+Map<int, String> _intStringMapFromJson(dynamic raw) {
+  final value = _map(raw);
+  if (value == null) {
+    return const <int, String>{};
+  }
+  final result = <int, String>{};
+  for (final entry in value.entries) {
+    final key = int.tryParse(entry.key);
+    if (key == null) {
+      continue;
+    }
+    result[key] = _asString(entry.value);
   }
   return result;
 }

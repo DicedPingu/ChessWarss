@@ -399,8 +399,7 @@ class _ModeDetailsPanel extends StatelessWidget {
             _MenuInfoLine(label: 'What it is', text: choice.description),
             const SizedBox(height: 6),
             _MenuInfoLine(label: 'Try first', text: choice.tryFirst),
-            if (!compact)
-              const SizedBox(height: 10),
+            if (!compact) const SizedBox(height: 10),
             SizedBox(height: compact ? 12 : 22),
             FilledButton.icon(
               style: FilledButton.styleFrom(

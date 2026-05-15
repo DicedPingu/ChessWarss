@@ -52,6 +52,11 @@ class WorldGenerator {
       preset: preset,
       protectedTiles: protectedTiles,
     );
+    final riverEdges = _riverEdgesForPreset(
+      boardSize: effectiveBoardSize,
+      seed: seed,
+      preset: preset,
+    );
 
     final tiles = <MapTile>[];
     for (var row = 0; row < effectiveBoardSize; row++) {
@@ -115,6 +120,7 @@ class WorldGenerator {
     return WorldState(
       size: effectiveBoardSize,
       tiles: tiles,
+      riverEdges: riverEdges,
       settlements: settlements,
       camps: const <CampState>[],
       players: players,
@@ -346,6 +352,7 @@ class WorldGenerator {
     required Set<BoardPosition> protectedTiles,
   }) {
     final blocked = <BoardPosition>{};
+    final random = Random(seed + preset.index);
     final center = boardSize ~/ 2;
 
     switch (preset) {
@@ -381,9 +388,124 @@ class WorldGenerator {
             }
           }
         }
+      case MapPreset.riverlands:
+        break;
+      case MapPreset.mountainPass:
+        for (var r = 0; r < boardSize; r++) {
+          for (var c = 0; c < boardSize; c++) {
+            if (r == c || r == c + 1 || r == c - 1) continue;
+            if (random.nextDouble() < 0.7 &&
+                !protectedTiles.contains(BoardPosition(r, c))) {
+              blocked.add(BoardPosition(r, c));
+            }
+          }
+        }
+        break;
+      case MapPreset.coastalCliffs:
+        for (var r = 0; r < boardSize; r++) {
+          blocked.add(BoardPosition(r, boardSize - 1));
+          if (random.nextBool()) blocked.add(BoardPosition(r, boardSize - 2));
+        }
+        break;
+      case MapPreset.ancientRuins:
+        for (var r = 1; r < boardSize - 1; r += 2) {
+          for (var c = 1; c < boardSize - 1; c += 2) {
+            if (!protectedTiles.contains(BoardPosition(r, c))) {
+              blocked.add(BoardPosition(r, c));
+            }
+          }
+        }
+        break;
+      case MapPreset.desertOasis:
+        for (var r = center - 2; r <= center + 2; r++) {
+          for (var c = center - 2; c <= center + 2; c++) {
+            if ((r == center - 2 ||
+                    r == center + 2 ||
+                    c == center - 2 ||
+                    c == center + 2) &&
+                !protectedTiles.contains(BoardPosition(r, c))) {
+              blocked.add(BoardPosition(r, c));
+            }
+          }
+        }
+        break;
     }
 
     return blocked;
+  }
+
+  List<RiverEdge> _riverEdgesForPreset({
+    required int boardSize,
+    required int seed,
+    required MapPreset preset,
+  }) {
+    if (boardSize < 4) {
+      return const <RiverEdge>[];
+    }
+
+    var splitCol = (boardSize ~/ 2) - 1;
+    splitCol = splitCol.clamp(0, boardSize - 2);
+    final crossingByRow = <int, RiverEdgeType>{
+      for (final entry in _crossingRowsForPreset(boardSize, preset).entries)
+        entry.key.clamp(0, boardSize - 1): entry.value,
+    };
+    final edges = <RiverEdge>[];
+
+    for (var row = 0; row < boardSize; row++) {
+      edges.add(
+        RiverEdge(
+          a: BoardPosition(row, splitCol),
+          b: BoardPosition(row, splitCol + 1),
+          type: crossingByRow[row] ?? RiverEdgeType.river,
+        ),
+      );
+
+      if (row == boardSize - 1) {
+        break;
+      }
+
+      final drift = ((seed + row * 17 + preset.index * 11) % 3) - 1;
+      final canDriftLeft = splitCol > 0;
+      final canDriftRight = splitCol < boardSize - 2;
+      if (drift < 0 && canDriftLeft) {
+        splitCol--;
+      } else if (drift > 0 && canDriftRight) {
+        splitCol++;
+      }
+    }
+
+    return edges;
+  }
+
+  Map<int, RiverEdgeType> _crossingRowsForPreset(
+    int boardSize,
+    MapPreset preset,
+  ) {
+    final center = boardSize ~/ 2;
+    return switch (preset) {
+      MapPreset.greatField => <int, RiverEdgeType>{
+        center: RiverEdgeType.bridge,
+        if (boardSize >= 6) center - 2: RiverEdgeType.ford,
+      },
+      MapPreset.tightRavine => <int, RiverEdgeType>{
+        center: RiverEdgeType.bridge,
+      },
+      MapPreset.brokenGround => <int, RiverEdgeType>{
+        center: RiverEdgeType.ford,
+        if (boardSize >= 5) center - 1: RiverEdgeType.bridge,
+        if (boardSize >= 7) center + 2: RiverEdgeType.ford,
+      },
+      MapPreset.riverlands => <int, RiverEdgeType>{
+        center: RiverEdgeType.bridge,
+        center - 1: RiverEdgeType.ford,
+        center + 1: RiverEdgeType.ford,
+      },
+      MapPreset.ancientRuins => <int, RiverEdgeType>{
+        center: RiverEdgeType.bridge,
+        if (boardSize >= 6) center - 2: RiverEdgeType.bridge,
+      },
+      _ => <int, RiverEdgeType>{},
+    };
   }
 
   BattlefieldSpec _battlefieldForTile({

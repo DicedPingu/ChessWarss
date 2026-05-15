@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 const List<Color> _playerPalette = <Color>[
-  Color(0xFF005CB9), // Player 1: cobalt
-  Color(0xFFC74800), // Player 2: vermilion
-  Color(0xFF007A55), // Player 3: jungle
-  Color(0xFF6A43A7), // Player 4: violet
+  Color(0xFFDC143C), // Player 1: crimson (Roman red)
+  Color(0xFFDAA520), // Player 2: goldenrod (Roman gold)
+  Color(0xFF8B4513), // Player 3: saddle brown (earthy)
+  Color(0xFF2F4F4F), // Player 4: dark slate gray (neutral)
 ];
 
 Color playerColor(int playerId) {

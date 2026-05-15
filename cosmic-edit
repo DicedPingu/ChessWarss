@@ -1,0 +1,272 @@
+LENOVO 82XT
+│
+├─0001:00 04F3:327E:
+│     Device ID:          05c1d4d9c050efb2178f827b95e10b3afd9b0b9d
+│     Current version:    0x0004
+│     Bootloader Version: 0x0001
+│     Vendor:             Elan (HIDRAW:0x04F3)
+│     GUIDs:              91a0ef22-53f1-53b1-a3b3-709ea0b7921a ← HIDRAW\VEN_04F3&DEV_327E
+│                         b817bc1d-d677-5216-b3a6-57869be31d6f ← HIDRAW\VEN_04F3&DEV_327E&MOD_0028
+│                         682e4c5b-5211-578c-9e43-00a4997eb822 ← ELANTP\ICTYPE_11&MOD_0028
+│                         6c60d9fd-c06f-5837-9cf5-5115706a8762 ← ELANTP\ICTYPE_11&MOD_0028&DRIVER_HID
+│     Device Flags:       • Internal device
+│                         • Updatable
+│                         • Unsigned Payload
+│                         • Can tag for emulation
+│   
+├─Integrated Camera:
+│     Device ID:          62d5d8280031f607f1db058da959a97f6a8e6d90
+│     Current version:    0.13
+│     Vendor:             Luxvisions Innotech Limited (USB:0x30C9)
+│     Serial Number:      200901010001
+│     GUID:               31871957-793b-5d86-9231-e0d0072544b4 ← USB\VID_30C9&PID_00A7
+│     Device Flags:       • Updatable
+│                         • Can tag for emulation
+│   
+├─Ryzen 7 7840HS w/ Radeon 780M Graphics:
+│ │   Device ID:          4bde70ba4e39b28f9eab1628f9dd6e6244c03027
+│ │   Current version:    0x0a704108
+│ │   Vendor:             AMD
+│ │   GUIDs:              2a1df9de-fe02-59c8-8af1-32c8bb011f94 ← CPUID\PRO_0&FAM_19&MOD_74
+│ │                       5a4bca32-6547-584f-bb36-920d9adede25 ← CPUID\PRO_0&FAM_19&MOD_74&STP_1
+│ │   Device Flags:       • Internal device
+│ │ 
+│ ├─Radeon 780M Graphics:
+│ │     Device ID:        310f45f1f223064b5c16bf6dff31146755a64480
+│ │     Summary:          AMD AMD_PHOENIX_GENERIC
+│ │     Current version:  1
+│ │     Vendor:           AMD (PCI:0x1002)
+│ │     GUID:             4a1501b7-b500-5255-9d9c-41d652a4d5bc ← AMD\113-PHXGEN
+│ │     Device Flags:     • Internal device
+│ │                       • Can tag for emulation
+│ │   
+│ ├─Secure Processor:
+│ │     Device ID:        c54ab0237d7a8db8c717b68e0be78e4374a2a079
+│ │     Summary:          AGESA PhoenixPI-FP8-FP7 1.0.0.1f
+│ │     Current version:  00.2d.0e.64
+│ │     Bootloader Version: 00.2d.0e.64
+│ │     Vendor:           AMD (PCI:0x1022)
+│ │     GUID:             9eb6a793-7f97-5fb5-b49c-139d2ce3ee46 ← PCI\VEN_1022&DEV_15C7
+│ │     Device Flags:     • Internal device
+│ │                       • Can tag for emulation
+│ │   
+│ └─System Management Unit (SMU):
+│       Device ID:        db0330716216c629bb2c07256e5d018f499eb6ce
+│       Summary:          Microcontroller used within CPU/APU program 4
+│       Current version:  76.15.0
+│       Vendor:           AMD
+│       GUID:             3ac3159e-6eef-5f6b-bc8d-67686b238747 ← /sys/devices/platform/AMDI0009:00
+│       Device Flags:     • Internal device
+│                         • Can tag for emulation
+│     
+├─SSDPFINW010TZL:
+│     Device ID:          04e17fcf7d3de91da49a163ffe4907855c3648be
+│     Summary:            NVM Express solid state drive
+│     Current version:    C02C    
+│     Vendor:             Solidigm (PCI:0x025E)
+│     Serial Number:      BTEH248201MW1P0E
+│     GUIDs:              8c1c70dc-867c-5677-9948-389903d0f8be ← NVME\VEN_025E&DEV_F1AB
+│                         067afa96-bfcc-53db-8ca7-a4e0c76c6474 ← NVME\VEN_025E&DEV_F1AB&SUBSYS_025E3910
+│                         9d96b13f-da9a-56ca-9324-9d91025040c4 ← SOLIDIGM SSDPFINW010TZL
+│     Device Flags:       • Internal device
+│                         • Updatable
+│                         • System requires external power source
+│                         • Needs shutdown after installation
+│                         • Device is usable for the duration of the update
+│                         • Can tag for emulation
+│   
+├─System Firmware:
+│     Device ID:          7c1c79dfea1b8473d024b1936d16479c70a649c6
+│     Summary:            UEFI System Resource Table device (updated via NVRAM)
+│     Current version:    1897353266
+│     Minimum Version:    1380122624
+│     Vendor:             LENOVO (DMI:LENOVO)
+│     Update State:       Success
+│     GUID:               250eedcd-cb8b-472c-9cff-30ce0b3530af
+│     Device Flags:       • Internal device
+│                         • Updatable
+│                         • System requires external power source
+│                         • Needs a reboot after installation
+│                         • Cryptographic hash verification is available
+│                         • Device is usable for the duration of the update
+│     Device Requests:    • Message
+│   
+├─TPM:
+│     Device ID:          1d8d50a4dbc65618f5c399c2ae827b632b3ccc11
+│     Current version:    6.8.0.7
+│     Vendor:             AMD (TPM:AMD)
+│     GUIDs:              9305de1c-1e12-5665-81c4-37f8e51219b8 ← TPM\VEN_AMD&DEV_0001
+│                         78a291ae-b499-5b0f-8f1d-74e1fefd0b1c ← TPM\VEN_AMD&MOD_AMD
+│                         65a3fced-b423-563f-8098-bf5c329fc063 ← TPM\VEN_AMD&DEV_0001&VER_2.0
+│                         5e704f0d-83cb-5364-8384-f46d725a23b8 ← TPM\VEN_AMD&MOD_AMD&VER_2.0
+│     Device Flags:       • Internal device
+│                         • System requires external power source
+│                         • Needs a reboot after installation
+│                         • Device can recover flash failures
+│                         • Signed Payload
+│                         • Can tag for emulation
+│   
+├─UEFI Device Firmware:
+│     Device ID:          eec350636d04c0567a95371b6ef29154873430fa
+│     Summary:            UEFI System Resource Table device (updated via NVRAM)
+│     Current version:    16777221
+│     Vendor:             DMI:LENOVO
+│     Update State:       Success
+│     GUID:               5474b24b-e10b-4fdf-bc83-e5c3fa1ca071
+│     Device Flags:       • Internal device
+│                         • Updatable
+│                         • System requires external power source
+│                         • Needs a reboot after installation
+│                         • Device is usable for the duration of the update
+│     Device Requests:    • Message
+│   
+└─UEFI Device Firmware:
+      Device ID:          53405ae8e275337fa92e5b56e7802949bb147668
+      Summary:            UEFI System Resource Table device (updated via NVRAM)
+      Current version:    4
+      Vendor:             DMI:LENOVO
+      Update State:       Success
+      GUID:               15030ebf-145c-4e95-8610-344fbad98bee
+      Device Flags:       • Internal device
+                          • Updatable
+                          • System requires external power source
+                          • Needs a reboot after installation
+                          • Device is usable for the duration of the update
+      Device Requests:    • Message
+    
+LENOVO 82XT
+│
+├─0001:00 04F3:327E:
+│     Device ID:          05c1d4d9c050efb2178f827b95e10b3afd9b0b9d
+│     Current version:    0x0004
+│     Bootloader Version: 0x0001
+│     Vendor:             Elan (HIDRAW:0x04F3)
+│     GUIDs:              91a0ef22-53f1-53b1-a3b3-709ea0b7921a ← HIDRAW\VEN_04F3&DEV_327E
+│                         b817bc1d-d677-5216-b3a6-57869be31d6f ← HIDRAW\VEN_04F3&DEV_327E&MOD_0028
+│                         682e4c5b-5211-578c-9e43-00a4997eb822 ← ELANTP\ICTYPE_11&MOD_0028
+│                         6c60d9fd-c06f-5837-9cf5-5115706a8762 ← ELANTP\ICTYPE_11&MOD_0028&DRIVER_HID
+│     Device Flags:       • Internal device
+│                         • Updatable
+│                         • Unsigned Payload
+│                         • Can tag for emulation
+│   
+├─Integrated Camera:
+│     Device ID:          62d5d8280031f607f1db058da959a97f6a8e6d90
+│     Current version:    0.13
+│     Vendor:             Luxvisions Innotech Limited (USB:0x30C9)
+│     Serial Number:      200901010001
+│     GUID:               31871957-793b-5d86-9231-e0d0072544b4 ← USB\VID_30C9&PID_00A7
+│     Device Flags:       • Updatable
+│                         • Can tag for emulation
+│   
+├─Ryzen 7 7840HS w/ Radeon 780M Graphics:
+│ │   Device ID:          4bde70ba4e39b28f9eab1628f9dd6e6244c03027
+│ │   Current version:    0x0a704108
+│ │   Vendor:             AMD
+│ │   GUIDs:              2a1df9de-fe02-59c8-8af1-32c8bb011f94 ← CPUID\PRO_0&FAM_19&MOD_74
+│ │                       5a4bca32-6547-584f-bb36-920d9adede25 ← CPUID\PRO_0&FAM_19&MOD_74&STP_1
+│ │   Device Flags:       • Internal device
+│ │ 
+│ ├─Radeon 780M Graphics:
+│ │     Device ID:        310f45f1f223064b5c16bf6dff31146755a64480
+│ │     Summary:          AMD AMD_PHOENIX_GENERIC
+│ │     Current version:  1
+│ │     Vendor:           AMD (PCI:0x1002)
+│ │     GUID:             4a1501b7-b500-5255-9d9c-41d652a4d5bc ← AMD\113-PHXGEN
+│ │     Device Flags:     • Internal device
+│ │                       • Can tag for emulation
+│ │   
+│ ├─Secure Processor:
+│ │     Device ID:        c54ab0237d7a8db8c717b68e0be78e4374a2a079
+│ │     Summary:          AGESA PhoenixPI-FP8-FP7 1.0.0.1f
+│ │     Current version:  00.2d.0e.64
+│ │     Bootloader Version: 00.2d.0e.64
+│ │     Vendor:           AMD (PCI:0x1022)
+│ │     GUID:             9eb6a793-7f97-5fb5-b49c-139d2ce3ee46 ← PCI\VEN_1022&DEV_15C7
+│ │     Device Flags:     • Internal device
+│ │                       • Can tag for emulation
+│ │   
+│ └─System Management Unit (SMU):
+│       Device ID:        db0330716216c629bb2c07256e5d018f499eb6ce
+│       Summary:          Microcontroller used within CPU/APU program 4
+│       Current version:  76.15.0
+│       Vendor:           AMD
+│       GUID:             3ac3159e-6eef-5f6b-bc8d-67686b238747 ← /sys/devices/platform/AMDI0009:00
+│       Device Flags:     • Internal device
+│                         • Can tag for emulation
+│     
+├─SSDPFINW010TZL:
+│     Device ID:          04e17fcf7d3de91da49a163ffe4907855c3648be
+│     Summary:            NVM Express solid state drive
+│     Current version:    C02C    
+│     Vendor:             Solidigm (PCI:0x025E)
+│     Serial Number:      BTEH248201MW1P0E
+│     GUIDs:              8c1c70dc-867c-5677-9948-389903d0f8be ← NVME\VEN_025E&DEV_F1AB
+│                         067afa96-bfcc-53db-8ca7-a4e0c76c6474 ← NVME\VEN_025E&DEV_F1AB&SUBSYS_025E3910
+│                         9d96b13f-da9a-56ca-9324-9d91025040c4 ← SOLIDIGM SSDPFINW010TZL
+│     Device Flags:       • Internal device
+│                         • Updatable
+│                         • System requires external power source
+│                         • Needs shutdown after installation
+│                         • Device is usable for the duration of the update
+│                         • Can tag for emulation
+│   
+├─System Firmware:
+│     Device ID:          7c1c79dfea1b8473d024b1936d16479c70a649c6
+│     Summary:            UEFI System Resource Table device (updated via NVRAM)
+│     Current version:    1897353266
+│     Minimum Version:    1380122624
+│     Vendor:             LENOVO (DMI:LENOVO)
+│     Update State:       Success
+│     GUID:               250eedcd-cb8b-472c-9cff-30ce0b3530af
+│     Device Flags:       • Internal device
+│                         • Updatable
+│                         • System requires external power source
+│                         • Needs a reboot after installation
+│                         • Cryptographic hash verification is available
+│                         • Device is usable for the duration of the update
+│     Device Requests:    • Message
+│   
+├─TPM:
+│     Device ID:          1d8d50a4dbc65618f5c399c2ae827b632b3ccc11
+│     Current version:    6.8.0.7
+│     Vendor:             AMD (TPM:AMD)
+│     GUIDs:              9305de1c-1e12-5665-81c4-37f8e51219b8 ← TPM\VEN_AMD&DEV_0001
+│                         78a291ae-b499-5b0f-8f1d-74e1fefd0b1c ← TPM\VEN_AMD&MOD_AMD
+│                         65a3fced-b423-563f-8098-bf5c329fc063 ← TPM\VEN_AMD&DEV_0001&VER_2.0
+│                         5e704f0d-83cb-5364-8384-f46d725a23b8 ← TPM\VEN_AMD&MOD_AMD&VER_2.0
+│     Device Flags:       • Internal device
+│                         • System requires external power source
+│                         • Needs a reboot after installation
+│                         • Device can recover flash failures
+│                         • Signed Payload
+│                         • Can tag for emulation
+│   
+├─UEFI Device Firmware:
+│     Device ID:          eec350636d04c0567a95371b6ef29154873430fa
+│     Summary:            UEFI System Resource Table device (updated via NVRAM)
+│     Current version:    16777221
+│     Vendor:             DMI:LENOVO
+│     Update State:       Success
+│     GUID:               5474b24b-e10b-4fdf-bc83-e5c3fa1ca071
+│     Device Flags:       • Internal device
+│                         • Updatable
+│                         • System requires external power source
+│                         • Needs a reboot after installation
+│                         • Device is usable for the duration of the update
+│     Device Requests:    • Message
+│   
+└─UEFI Device Firmware:
+      Device ID:          53405ae8e275337fa92e5b56e7802949bb147668
+      Summary:            UEFI System Resource Table device (updated via NVRAM)
+      Current version:    4
+      Vendor:             DMI:LENOVO
+      Update State:       Success
+      GUID:               15030ebf-145c-4e95-8610-344fbad98bee
+      Device Flags:       • Internal device
+                          • Updatable
+                          • System requires external power source
+                          • Needs a reboot after installation
+                          • Device is usable for the duration of the update
+      Device Requests:    • Message
+    

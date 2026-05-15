@@ -5,7 +5,18 @@ enum PlayerType { human, ai }
 
 enum TerrainType { passable, blocked }
 
-enum MapPreset { greatField, tightRavine, brokenGround }
+enum RiverEdgeType { river, ford, bridge }
+
+enum MapPreset {
+  greatField,
+  tightRavine,
+  brokenGround,
+  riverlands,
+  mountainPass,
+  coastalCliffs,
+  ancientRuins,
+  desertOasis,
+}
 
 enum SettlementAction { tax, forage, garrison, study, levy }
 
@@ -213,6 +224,26 @@ class MapTile {
   final BattlefieldSpec battlefield;
 }
 
+class RiverEdge {
+  RiverEdge({required this.a, required this.b, required this.type})
+    : assert(
+        (a.row - b.row).abs() + (a.col - b.col).abs() == 1,
+        'River edges must connect adjacent tiles.',
+      );
+
+  final BoardPosition a;
+  final BoardPosition b;
+  final RiverEdgeType type;
+
+  bool connects(BoardPosition first, BoardPosition second) {
+    return (a == first && b == second) || (a == second && b == first);
+  }
+
+  bool touches(BoardPosition position) {
+    return a == position || b == position;
+  }
+}
+
 class ArmyStack {
   static const Object _unset = Object();
 
@@ -272,6 +303,7 @@ class WorldState {
   const WorldState({
     required this.size,
     required this.tiles,
+    this.riverEdges = const <RiverEdge>[],
     this.settlements = const <SettlementState>[],
     this.camps = const <CampState>[],
     required this.players,
@@ -289,6 +321,7 @@ class WorldState {
 
   final int size;
   final List<MapTile> tiles;
+  final List<RiverEdge> riverEdges;
   final List<SettlementState> settlements;
   final List<CampState> camps;
   final List<PlayerSlot> players;
@@ -361,6 +394,38 @@ class WorldState {
     return tileAt(position).terrain == TerrainType.passable;
   }
 
+  RiverEdge? riverEdgeBetween(BoardPosition from, BoardPosition to) {
+    for (final edge in riverEdges) {
+      if (edge.connects(from, to)) {
+        return edge;
+      }
+    }
+    return null;
+  }
+
+  bool canTraverseBetween(BoardPosition from, BoardPosition to) {
+    final edge = riverEdgeBetween(from, to);
+    return edge == null || edge.type != RiverEdgeType.river;
+  }
+
+  bool tileTouchesRiver(BoardPosition position) {
+    for (final edge in riverEdges) {
+      if (edge.touches(position)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool tileTouchesCrossing(BoardPosition position) {
+    for (final edge in riverEdges) {
+      if (edge.touches(position) && edge.type != RiverEdgeType.river) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   List<BoardPosition> legalMovesForStack(String stackId, {int maxSteps = 1}) {
     final stack = stackById(stackId);
     if (stack == null) {
@@ -380,6 +445,9 @@ class WorldState {
           continue;
         }
         if (!isPassable(next)) {
+          continue;
+        }
+        if (!canTraverseBetween(stack.position, next)) {
           continue;
         }
         final occupant = stackAt(next);
@@ -408,6 +476,9 @@ class WorldState {
           if (!isInside(next) || !isPassable(next)) {
             continue;
           }
+          if (!canTraverseBetween(current, next)) {
+            continue;
+          }
           final occupant = stackAt(next);
           if (occupant != null && occupant.ownerId == stack.ownerId) {
             continue;
@@ -433,6 +504,7 @@ class WorldState {
   WorldState copyWith({
     int? size,
     List<MapTile>? tiles,
+    List<RiverEdge>? riverEdges,
     List<SettlementState>? settlements,
     List<CampState>? camps,
     List<PlayerSlot>? players,
@@ -450,6 +522,7 @@ class WorldState {
     return WorldState(
       size: size ?? this.size,
       tiles: tiles ?? this.tiles,
+      riverEdges: riverEdges ?? this.riverEdges,
       settlements: settlements ?? this.settlements,
       camps: camps ?? this.camps,
       players: players ?? this.players,

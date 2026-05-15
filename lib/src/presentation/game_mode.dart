@@ -12,17 +12,16 @@ extension GameModeUi on GameMode {
   };
 
   String get setupSubtitle => switch (this) {
-    GameMode.eterna =>
-      'Single-player adventure campaign. You command one faction against multiple AI rivals.',
+    GameMode.eterna => 'Single-player war-chess campaign against AI rivals.',
     GameMode.casusBelli =>
-      'Arena campaign focus. Fast clashes, flexible map sizes, and local multiplayer-first pacing.',
+      'Fast arena campaign with local multiplayer-first pacing.',
   };
 
   String get menuSummary => switch (this) {
     GameMode.eterna =>
-      'Adventure campaign: 1 human faction versus multiple AI factions on a larger map.',
+      'One faction, several rivals, and battles resolved on readable chess boards.',
     GameMode.casusBelli =>
-      'Main focus: compact-to-large arena campaign with immediate conflict.',
+      'Compact-to-large arena maps tuned for immediate conflict.',
   };
 
   int get minMapSize => switch (this) {
